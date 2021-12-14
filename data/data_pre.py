@@ -8,7 +8,8 @@ DATA_PATH = '../../NinaPro/DB6' # modify it for your own
 
 # to segment the data with a sliding window
 def prepare_data(data_params):
-    wl = round(data_params['ws']/1000*data_params['fs'])
+    fs = data_params['fs']
+    wl = round(data_params['ws']/1000*fs)
     # window length (ms)/1000 * fs = samples (int)
     # ratio_non_overlap [0-1]
     # if ratio_non_overlap = 0.1, size_non_overlap = wl*0.1
@@ -30,7 +31,10 @@ def prepare_data(data_params):
                     # add relative path later
                     new_class_label = 0
                     for m in data_params['class_list']:
-                        samples = emg[np.nonzero(np.logical_and(cycle==k, label==m))[0]][:,valid_channel]
+                        if m == 0:
+                            samples = emg[np.nonzero(np.logical_and(cycle==k, label==m))[0]][:6*fs,valid_channel] # take only first 6s data for the 'rest'
+                        else:
+                            samples = emg[np.nonzero(np.logical_and(cycle==k, label==m))[0]][:,valid_channel]
                         temp = []
                         for n in range(0,samples.shape[0]-wl, round(wl*data_params['ratio_non_overlap'])):
                             segdata = samples[n:n+wl,:] # 500*14

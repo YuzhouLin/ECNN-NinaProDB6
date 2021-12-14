@@ -25,17 +25,21 @@ def update_loss_params(params):
     return loss_params
 
 
-def load_data_cnn(data_path, sb_n, trial_list, batch_size):
-    X = []  # L*1*16(channels)*50(samples)
+def load_data_cnn(params):
+    # Specify for Ninapro DB6
+    X = []  # L*1*14(channels)*500(samples)
     Y = []
-    for trial_n in trial_list:
-        temp = pd.read_pickle(
-            os.getcwd() + data_path + f"sb{sb_n}_trial{trial_n}.pkl")
-        X.extend(temp['x'])
-        Y.extend(temp['y'])
+    for day_n in params['day_list']:
+        for time_n in params['time_list']:
+            for trial_n in params['trial_list']:
+                temp = pd.read_pickle(
+                    os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{day_n}_T{time_n}_t{trial_n}.pkl")
+                X.extend(temp['x'])
+                Y.extend(temp['y'])
     data = TensorDataset(
         torch.from_numpy(np.array(X, dtype=np.float32)).permute(0, 1, 3, 2),
         torch.from_numpy(np.array(Y, dtype=np.int64)))
+    batch_size = params['batch_size']
     if batch_size > 1:  # For training and validation
         data_loader = torch.utils.data.DataLoader(
             data, batch_size=batch_size, shuffle=True, drop_last=True)

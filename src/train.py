@@ -7,6 +7,7 @@ from src import helps_pre as pre
 import optuna
 from optuna.samplers import TPESampler
 from optuna.pruners import MedianPruner
+import copy
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -18,29 +19,26 @@ args = parser.parse_args()
 EDL_USED = args.edl
 DEVICE = pre.get_device()
 EPOCHS = 150
-CLASS_N = 12
-TRIAL_LIST = list(range(1, 7))
-DATA_PATH = '/data/NinaproDB5/raw/'
+CLASS_N = 8
+TRIAL_LIST = list(range(1, 13))
+DATA_PATH = '/data/NinaproDB6/'
 
 
-def run_training(fold, params, save_model):
+def run_training(params, save_model):
     # load_data
-    '''
-    temp_trial_list = [
-        x for x in TRIAL_LIST if x not in params['test_trial_list']]
-    '''
-    o_f = params['outer_f']  # outer fold num
-    temp_trial_list = [x for x in TRIAL_LIST if x != o_f]
-    valid_trial_list = [temp_trial_list.pop(fold)]
-    train_trial_list = temp_trial_list
-
     sb_n = params['sb_n']
-
-    train_loader = pre.load_data_cnn(
-        DATA_PATH, sb_n, train_trial_list, params['batch_size'])
-    valid_loader = pre.load_data_cnn(
-        DATA_PATH, sb_n, valid_trial_list, params['batch_size'])
-
+    train_params = {'data_path': DATA_PATH, 
+                   'sb_n': sb_n,
+                    'day_list': [1],
+                    'time_list': [1],
+                    'trial_list': TRIAL_LIST,
+                    'batch_size': params['batch_size']
+                   }
+    valid_params = copy.deepcopy(train_params)
+    valid_params['time_list'] = [2]
+    train_loader = pre.load_data_cnn(train_params)
+    valid_loader = pre.load_data_cnn(valid_params)
+    
     trainloaders = {
         "train": train_loader,
         "val": valid_loader,
@@ -60,23 +58,22 @@ def run_training(fold, params, save_model):
     loss_params['device'] = DEVICE
     
     if save_model:
-        prefix_path = f'model_innerloop/ecnn{EDL_USED}/'
+        prefix_path = f'model/ecnn{EDL_USED}/'
         if not os.path.exists(prefix_path):
             os.makedirs(prefix_path)
 
-        filename = f"sb{sb_n}_o{o_f}_i{fold}.pt"
+        filename = f"sb{sb_n}_temp.pt" # modify it later
         model_name = os.path.join(prefix_path, filename)
 
     best_loss = np.inf
     early_stopping_iter = 10
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, EPOCHS + 1): 
         if 'annealing_step' in loss_params:
             loss_params['epoch_num'] = epoch
         train_losses = eng.train(trainloaders, loss_params)
         train_loss = train_losses['train']
         valid_loss = train_losses['val']
         print(
-            f"fold:{fold}, "
             f"epoch:{epoch}, "
             f"train_loss: {train_loss}, "
             f"valid_loss: {valid_loss}. "
@@ -117,18 +114,17 @@ def objective(trial, params):
             params['l'] = trial.suggest_float(
                 "l", 0.01, 1.0, log=True)  # l:lambda
 
-    all_losses = []
-    for i_f in range(len(TRIAL_LIST) - 1):  # len(TRIAL_LIST) - 1 = 5
-        temp_loss = run_training(i_f, params, save_model=False)
-        intermediate_value = temp_loss
-        trial.report(intermediate_value, i_f)
+    temp_loss = run_training(params, save_model=False)
+    
+    #intermediate_value = temp_loss
+    #trial.report(intermediate_value, i_f)
 
-        if trial.should_prune():
-            raise optuna.TrialPruned()
-        all_losses.append(temp_loss)
+    #if trial.should_prune():
+    #    raise optuna.TrialPruned()
+    #all_losses.append(temp_loss)
 
-    return np.mean(all_losses)
-
+    #return np.mean(all_losses)
+    return temp_loss
 
 def cv_hyperparam_study():
     params = {
@@ -139,36 +135,34 @@ def cv_hyperparam_study():
         params['edl_fun'] = 'mse'
         params['kl'] = EDL_USED - 1
  
-    for test_trial in range(1, 7):
-        params['outer_f'] = test_trial
-        for sb_n in range(1, 11):
-            params['sb_n'] = sb_n
-            study_path = f'study/ecnn{EDL_USED}/sb{sb_n}'
-            if not os.path.exists(study_path):
-                os.makedirs(study_path)
-            sampler = TPESampler()
-            study = optuna.create_study(
-                direction="minimize",  # maximaze or minimaze our objective
-                sampler=sampler,  # parametrs sampling strategy
-                pruner=MedianPruner(
-                    n_startup_trials=5,
-                    n_warmup_steps=3,  # let's say num epochs
-                    interval_steps=1,
-                ),
-                study_name='STUDY',
-                storage="sqlite:///" + study_path + f"/t{test_trial}.db",
-                # storing study results
-                load_if_exists=False  # An error will be raised if same name
-            )
+    for sb_n in range(1, 2): # modify it later
+        params['sb_n'] = sb_n
+        study_path = f'study/ecnn{EDL_USED}/sb{sb_n}'
+        if not os.path.exists(study_path):
+            os.makedirs(study_path)
+        sampler = TPESampler()
+        study = optuna.create_study(
+            direction="minimize",  # maximaze or minimaze our objective
+            sampler=sampler,  # parametrs sampling strategy
+            pruner=MedianPruner(
+                n_startup_trials=10,
+                n_warmup_steps=5,  # let's say num epochs
+                interval_steps=1,
+            ),
+            study_name='STUDY',
+            storage="sqlite:///" + study_path + f"/temp.db", # modify it later 
+            # storing study results
+            load_if_exists=False  # An error will be raised if same name
+        )
 
-            study.optimize(lambda trial: objective(trial, params), n_trials=25)
-            print("Number of finished trials: ", len(study.trials))
-            print("Best trial:")
-            trial = study.best_trial
-            print("  Value: ", trial.value)
-            print("  Params: ")
-            for key, value in trial.params.items():
-                print("    {}: {}".format(key, value))
+        study.optimize(lambda trial: objective(trial, params), n_trials=25)
+        print("Number of finished trials: ", len(study.trials))
+        print("Best trial:")
+        trial = study.best_trial
+        print("  Value: ", trial.value)
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
 
     return
 
