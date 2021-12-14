@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 
-DATA_PATH = './data/NinaPro/DB6' # change it later
+DATA_PATH = '../../NinaPro/DB6' # modify it for your own
 
 # to segment the data with a sliding window
 def prepare_data(data_params):
