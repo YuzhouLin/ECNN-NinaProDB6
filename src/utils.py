@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from src import helps_pro as pro
+import helps_pro as pro
 import pandas as pd
 import os
 
@@ -188,7 +188,7 @@ class Model(nn.Module):
         self._dropout2 = nn.Dropout2d(dropout)
         self._pool2 = nn.MaxPool2d(kernel_size=(1, 3))
 
-        self._fc1 = nn.Linear((14 - 2 * k_c + 2) * 3 * 64, 500)
+        self._fc1 = nn.Linear(26880, 500)
         # 8 = 12 channels - 2 -2 ;  53 = ((500-4)/3-4)/3
         self._batch_norm3 = nn.BatchNorm1d(500)
         self._prelu3 = nn.PReLU(500)
