@@ -3,7 +3,7 @@ import os
 import torch
 import numpy as np
 import utils
-from src import helps_pre as pre
+import helps_pre as pre
 import optuna
 from optuna.samplers import TPESampler
 from optuna.pruners import MedianPruner
@@ -18,10 +18,10 @@ args = parser.parse_args()
 
 EDL_USED = args.edl
 DEVICE = pre.get_device()
-EPOCHS = 150
+EPOCHS = 500
 CLASS_N = 8
 TRIAL_LIST = list(range(1, 13))
-DATA_PATH = '/data/NinaproDB6/'
+DATA_PATH = '/data/'
 
 
 def run_training(params, save_model):
@@ -45,7 +45,7 @@ def run_training(params, save_model):
     }
 
     # Load Model
-    model = utils.Model()
+    model = utils.Model(number_of_class=CLASS_N)
     model.to(DEVICE)
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.01,amsgrad=True)
     optimizer = getattr(
