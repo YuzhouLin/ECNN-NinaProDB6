@@ -17,7 +17,7 @@ EDL_USED = args.edl
 DEVICE = pre.get_device()
 EPOCHS = 10
 CLASS_N = 8
-TRIAL_LIST = list(range(1, 13))
+TRIAL_LIST = list(range(1, 2))
 DATA_PATH = '/data/'
 
 
