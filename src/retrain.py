@@ -4,13 +4,13 @@ import utils
 import helps_pre as pre
 # import optuna
 import os
-
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--edl', type=int, default=0,
     help='0: no edl; 1: edl without kl; 2: edl with kl')
-parser.add_argument('--tnn', action='store_true', default=False,
+parser.add_argument('--tcn', action='store_true', default=False,
                     help='to use tcn if it activates, cnn otherwise')
     
 args = parser.parse_args()
@@ -19,10 +19,10 @@ args = parser.parse_args()
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.get_device()
-EPOCHS = 10
+EPOCHS = 20
 CLASS_N = 8
 CHANNEL_N = 14
-TRIAL_LIST = list(range(1, 2)) # change it later
+TRIAL_LIST = list(range(1, 13)) # change it later
 DATA_PATH = '/data/'
 
 
@@ -36,18 +36,19 @@ def retrain(params):
                     'day_list': [1],
                     'time_list': [1, 2],
                     'trial_list': TRIAL_LIST,
-                    'batch_size': params['batch_size']
+                    'batch_size': params['batch_size'],
+                    'tcn_used': TCN_USED
                    }
 
     train_loader = pre.load_data(train_params)
 
     dropout_rate=params['dropout_rate']
-    tcn_channels = params['channels']
-    k_s = params['kernel_size']
 
     if TCN_USED:
+        tcn_channels = params['channels']
+        k_s = params['kernel_size']
         model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
-    else：
+    else:
         model = utils.Model(number_of_class=CLASS_N, dropout=dropout_rate)
     model.to(DEVICE)
     optimizer = getattr(
@@ -60,6 +61,7 @@ def retrain(params):
     print(loss_params)
     
     #best_loss = params['best_loss']
+    t0 = time.time()
     for epoch in range(1, EPOCHS + 1):
         if 'annealing_step' in loss_params:
             loss_params['epoch_num'] = epoch
@@ -69,7 +71,7 @@ def retrain(params):
             #f"best_loss_from_cv:{best_loss}")
         #if train_loss < best_loss:
         #    break
-
+    print('{} seconds'.format(time.time() - t0))
     torch.save(model.state_dict(), params['saved_model'])
     return
 
@@ -88,10 +90,13 @@ if __name__ == "__main__":
 
     
     if TCN_USED:
-        params['channels']=[16,32,64,128,256]
+        params['channels']=[16,32,64]
         params['kernel_size'] = 3
+        params['lr'] = 1e-2
+    else:
+        params['lr'] = 1e-3
 
-    prefix_path = f'models/ecnn{EDL_USED}/' if TCN_USED else f'models/etcn{EDL_USED}/'
+    prefix_path = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/'
     
     
     if not os.path.exists(prefix_path):
@@ -114,7 +119,7 @@ if __name__ == "__main__":
         params['saved_model'] = model_name
         #params['best_loss'] = temp_best_trial.value
         params['optimizer'] = "Adam"
-        params['lr'] = 1e-3
+        #params['lr'] = 1e-3
         params['batch_size'] = 512
         params['dropout_rate'] = 0.5
         retrain(params)

@@ -36,14 +36,11 @@ def load_data(params):
                     os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{day_n}_T{time_n}_t{trial_n}.pkl")
                 X.extend(temp['x'])
                 Y.extend(temp['y'])
-    X_torch = torch.from_numpy(np.array(X, dtype=np.float32)).permute(0, 1, 3, 2) # ([128, 1, 14, 400])
+    X_torch = torch.from_numpy(np.array(X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_torch = torch.from_numpy(np.array(Y, dtype=np.int64))
     if params['tcn_used']:
-        X_torch = torch.squeeze(X_torch, 1) # ([128, 14, 400])
+        X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
     data = TensorDataset(X_torch, Y_torch)
-    
-
-    
     batch_size = params['batch_size']
     if batch_size > 1:  # For training and validation
         data_loader = torch.utils.data.DataLoader(
