@@ -8,16 +8,21 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    'edl', type=int, default=0,
+    '--edl', type=int, default=0,
     help='0: no edl; 1: edl without kl; 2: edl with kl')
+parser.add_argument('--tnn', action='store_true', default=False,
+                    help='to use tcn if it activates, cnn otherwise')
+    
 args = parser.parse_args()
 
 
 EDL_USED = args.edl
+TCN_USED = args.tcn
 DEVICE = pre.get_device()
 EPOCHS = 10
 CLASS_N = 8
-TRIAL_LIST = list(range(1, 2))
+CHANNEL_N = 14
+TRIAL_LIST = list(range(1, 2)) # change it later
 DATA_PATH = '/data/'
 
 
@@ -34,9 +39,16 @@ def retrain(params):
                     'batch_size': params['batch_size']
                    }
 
-    train_loader = pre.load_data_cnn(train_params)
+    train_loader = pre.load_data(train_params)
 
-    model = utils.Model(number_of_class=CLASS_N)
+    dropout_rate=params['dropout_rate']
+    tcn_channels = params['channels']
+    k_s = params['kernel_size']
+
+    if TCN_USED:
+        model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
+    else：
+        model = utils.Model(number_of_class=CLASS_N, dropout=dropout_rate)
     model.to(DEVICE)
     optimizer = getattr(
         torch.optim,
@@ -66,14 +78,22 @@ if __name__ == "__main__":
 
     params = {
         'class_n': CLASS_N,
-        'edl_used': EDL_USED
+        'edl_used': EDL_USED,
+        'tcn_used': TCN_USED
     }
 
     if EDL_USED != 0:
         params['edl_fun'] = 'mse'
         params['kl'] = EDL_USED - 1
 
-    prefix_path = f'models/ecnn{EDL_USED}/'
+    
+    if TCN_USED:
+        params['channels']=[16,32,64,128,256]
+        params['kernel_size'] = 3
+
+    prefix_path = f'models/ecnn{EDL_USED}/' if TCN_USED else f'models/etcn{EDL_USED}/'
+    
+    
     if not os.path.exists(prefix_path):
         os.makedirs(prefix_path)
 
@@ -96,4 +116,5 @@ if __name__ == "__main__":
         params['optimizer'] = "Adam"
         params['lr'] = 1e-3
         params['batch_size'] = 512
+        params['dropout_rate'] = 0.5
         retrain(params)
