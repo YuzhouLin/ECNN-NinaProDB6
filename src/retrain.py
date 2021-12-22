@@ -9,7 +9,8 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--edl', type=int, default=0,
-    help='0: no edl; 1: edl without kl; 2: edl with kl')
+    help='0: no edl; 1: edl without kl; 2: edl with kl (annealing); \
+        3: edl with kl (trade-off)')
 parser.add_argument('--tcn', action='store_true', default=False,
                     help='to use tcn if it activates, cnn otherwise')
     
@@ -18,11 +19,11 @@ args = parser.parse_args()
 
 EDL_USED = args.edl
 TCN_USED = args.tcn
-DEVICE = pre.get_device()
+DEVICE = pre.try_gpu()
 EPOCHS = 20
 CLASS_N = 8
 CHANNEL_N = 14
-TRIAL_LIST = list(range(1, 13)) # change it later
+TRIAL_LIST = list(range(1, 13))
 DATA_PATH = '/data/'
 
 

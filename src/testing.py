@@ -1,53 +1,63 @@
 import argparse
 import torch
 import utils
-from src import helps_pre as pre
+import helps_pre as pre
 import copy
 import optuna
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    'edl', type=int, default=0,
+    '--edl', type=int, default=0,
     help='0: no edl; 1: edl without kl; 2: edl with kl (annealing); \
         3: edl with kl (trade-off)')
+parser.add_argument('--tcn', action='store_true', default=False,
+                    help='to use tcn if it activates, cnn otherwise')
+    
 args = parser.parse_args()
 
 EDL_USED = args.edl
-DEVICE = pre.get_device()
-DATA_PATH = '/data/NinaproDB5/raw/'
+TCN_USED = args.tcn
+DATA_PATH = '/data/'
+TRIAL_LIST = list(range(1, 13))
+DEVICE = torch.device('cpu')
+CHANNEL_N = 14
+CLASS_N = 8
 
 
 def test(params):
-    #  load_data
-    device = torch.device('cpu')
-    test_trial = params['outer_f']
-    sb_n = params['sb_n']
-
     # Load testing Data
-    inputs, targets = pre.load_data_test_cnn(
-        DATA_PATH, sb_n, test_trial)
-
+    inputs_torch, targets_numpy = pre.load_data_test(params)
+    
+    print(inputs_torch.size())
     # Load trained model
-    model = utils.Model()
-    model.load_state_dict(
-        torch.load(params['saved_model'], map_location=device))
-    model.eval()
+    model_path = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/'
+    saved_model = model_path + f'sb{params["sb_n"]}_temp.pt' # later
+    
+    dropout_rate = 0.5 # later
+    if TCN_USED:
+        tcn_channels = [16,32,64] # later
+        k_s = 3 # later
+        model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
+    else:
+        model = utils.Model(number_of_class=CLASS_N, dropout=dropout_rate)
 
-    # Get Results
-    outputs = model(inputs.to(device)).detach()
+    model.load_state_dict(
+        torch.load(saved_model, map_location=DEVICE))
+    model.eval()
+    
+    # Get testing model outputs
+    outputs = model(inputs_torch.to(DEVICE)).detach()
 
     # Load the Testing Engine
-    eng = utils.EngineTest(outputs, targets)
+    eng = utils.EngineTest(outputs, targets_numpy)
+    del params['data_path']
+    del params['trial_list']
+    # update accuracy
+    eng.update_result_acc(params)
 
-    common_keys_for_update_results = ['sb_n', 'edl_used', 'outer_f']
-
-    dict_for_update_acc = \
-        {key: params[key] for key in common_keys_for_update_results}
+    '''
     dict_for_update_R = copy.deepcopy(dict_for_update_acc)
-
-    eng.update_result_acc(dict_for_update_acc)
-
     # Get the optimal activation function
     if EDL_USED == 0:
         dict_for_update_R['acti_fun'] = 'softmax'
@@ -62,20 +72,29 @@ def test(params):
 
     print(dict_for_update_R)
     eng.update_result_R(dict_for_update_R)
-
+    '''
     return
 
 
 if __name__ == "__main__":
 
-    params = {'edl_used': EDL_USED}
+    params = {'edl_used': EDL_USED, 'tcn_used': TCN_USED, 'trial_list': TRIAL_LIST, 'data_path': DATA_PATH}
+    # test temp
+    params['sb_n'] = 1
+    params['day_n'] = 5
+    params['time_n'] = 1
+    test(params)
+    
 
-    for test_trial in range(1, 7):
-        params['outer_f'] = test_trial
-        for sb_n in range(1, 11):
-            params['sb_n'] = sb_n
-            model_name = f"models/ecnn{EDL_USED}/sb{sb_n}_t{test_trial}.pt"
-            params['saved_model'] = model_name
-            test(params)
-            print(f'Testing done. sb{sb_n}-t{test_trial}')
-
+    '''
+    for sb_n in range(1, 2): # later
+        params['sb_n'] = sb_n
+        model_name = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/' # later
+        params['saved_model'] = model_name
+        for day_n in [2, 3, 4, 5]: # later
+            params['day_n'] = day_n
+            for time_n in [1, 2]: # later
+                params['time_n'] = time_n
+                test(params)
+                print(f'Testing done. sb{sb_n}-temp')
+    '''
