@@ -19,7 +19,7 @@ args = parser.parse_args()
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DATA_PATH = '/data/'
-TRIAL_LIST = list(range(1, 13))
+TRIAL_LIST = list(range(1, 2))
 DEVICE = torch.device('cpu')
 CHANNEL_N = 14
 CLASS_N = 8
@@ -54,6 +54,7 @@ def test(params):
     del params['data_path']
     del params['trial_list']
     # update accuracy
+    
     eng.update_result_acc(params)
 
     '''

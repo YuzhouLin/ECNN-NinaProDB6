@@ -101,7 +101,10 @@ class EngineTest:
         # {'sb_n': , edl', 'outer_f'}
 
         # load current result file
-        filename = 'results/cv/accuracy_temp.csv'
+        folder = 'results/temp/'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        filename = folder + 'accuracy_temp.csv'
         column_names = [*params, 'gesture', 'recall']
         # 'sb_n','edl_used','outer_f'
         if os.path.exists(filename):
