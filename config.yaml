@@ -1,0 +1,9 @@
+CLASS_NAMES: ['Rest', 'Large diameter grasp', 'Adducted Thumb grasp', 'Index finger extension grasp', 'Medium wrap', 'Writing tripod grasp', 'Power sphere grasp', 'Precision sphere grasp']
+
+DATA_CONFIG:
+    DATA_PROCESSOR:
+        - NAME: shuffle_points
+          SHUFFLE_ENABLED: {
+            'train': True,
+            'test': False
+          }

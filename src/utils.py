@@ -5,6 +5,7 @@ from torch.nn.utils import weight_norm
 import helps_pro as pro
 import pandas as pd
 import os
+#import tqdm
 
 
 class NinaProDataset:
@@ -63,6 +64,7 @@ class EngineTrain:
         final_loss = 0.0
         self.model.train()
         data_n = 0.0
+        #loop = tqdm(enumerate(data_loader), total=len(data_loader), leave=False)
         for _, (inputs, targets) in enumerate(data_loader):
             inputs = inputs.to(self.device)
             targets = targets.to(self.device)
@@ -72,6 +74,8 @@ class EngineTrain:
                 loss = self.criterion(outputs, targets, loss_params)
                 loss.backward()
                 self.optimizer.step()
+                #loop.set_description(f"Epoch [{loss_params['epoch_num']}/{1000}]")
+                #loop.set_postfix(loss=loss.item())
             final_loss += loss.item() * inputs.size(0)
             data_n += inputs.size(0)
         final_loss = final_loss / data_n

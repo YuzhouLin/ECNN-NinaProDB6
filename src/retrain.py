@@ -5,6 +5,8 @@ import helps_pre as pre
 # import optuna
 import os
 import time
+#import yaml
+from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -62,18 +64,24 @@ def retrain(params):
     print(loss_params)
     
     #best_loss = params['best_loss']
+    writer = SummaryWriter('./tf_logs') # tensorboard try
+    images, labels = next(iter(train_loader)) # tensorboard try
+    writer.add_graph(model, images) # tensorboard try
     t0 = time.time()
     for epoch in range(1, EPOCHS + 1):
-        if 'annealing_step' in loss_params:
-            loss_params['epoch_num'] = epoch
+        #if 'annealing_step' in loss_params:
+        #    loss_params['epoch_num'] = epoch
+        loss_params['epoch_num'] = epoch
         train_loss = eng.re_train(train_loader, loss_params)
         print(
             f"epoch:{epoch}, train_loss:{train_loss}")
             #f"best_loss_from_cv:{best_loss}")
         #if train_loss < best_loss:
         #    break
+        writer.add_scalar('TrainLoss', train_loss, global_step=epoch) # tensorboard try
     print('{} seconds'.format(time.time() - t0))
     torch.save(model.state_dict(), params['saved_model'])
+    writer.close() # tensorboard try
     return
 
 
