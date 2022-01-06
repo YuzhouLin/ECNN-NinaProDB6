@@ -22,11 +22,11 @@ args = parser.parse_args()
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
-EPOCHS = 20
+EPOCHS = 100
 CLASS_N = 8
 CHANNEL_N = 14
 TRIAL_LIST = list(range(1, 13))
-DATA_PATH = '/data/'
+DATA_PATH = '/../../hy-tmp/Data6/Processed/'
 
 
 def retrain(params):
@@ -61,24 +61,26 @@ def retrain(params):
 
     loss_params = pre.update_loss_params(params)
     loss_params['device'] = DEVICE
-    print(loss_params)
+    # print(loss_params)
     
     #best_loss = params['best_loss']
-    writer = SummaryWriter('./tf_logs') # tensorboard try
+    writer = SummaryWriter('/../../tf_logs/sb1') # tensorboard try
     images, labels = next(iter(train_loader)) # tensorboard try
-    writer.add_graph(model, images) # tensorboard try
+    writer.add_graph(model, images.to(DEVICE)) # tensorboard try
     t0 = time.time()
+    #best_loss = 0.6514658182859421 # CNN
+    best_loss = 1.2521
     for epoch in range(1, EPOCHS + 1):
         #if 'annealing_step' in loss_params:
         #    loss_params['epoch_num'] = epoch
         loss_params['epoch_num'] = epoch
         train_loss = eng.re_train(train_loader, loss_params)
         print(
-            f"epoch:{epoch}, train_loss:{train_loss}")
+            f"epoch:{epoch}, train_loss:{train_loss}, best_loss_from_hpo:{best_loss}")
             #f"best_loss_from_cv:{best_loss}")
-        #if train_loss < best_loss:
-        #    break
         writer.add_scalar('TrainLoss', train_loss, global_step=epoch) # tensorboard try
+        if train_loss < best_loss:
+            break
     print('{} seconds'.format(time.time() - t0))
     torch.save(model.state_dict(), params['saved_model'])
     writer.close() # tensorboard try
@@ -86,7 +88,7 @@ def retrain(params):
 
 
 if __name__ == "__main__":
-
+    #print(DEVICE)
     params = {
         'class_n': CLASS_N,
         'edl_used': EDL_USED,
@@ -99,13 +101,19 @@ if __name__ == "__main__":
 
     
     if TCN_USED:
-        params['channels']=[16,32,64]
-        params['kernel_size'] = 3
-        params['lr'] = 1e-2
+        params['channels']= [16,32,64]
+        params['kernel_size'] = 2
+        params['lr'] = 9.93597013034459e-05
+        params['optimizer'] = "Adam"
+        params['batch_size'] = 32
+        params['dropout_rate'] = 0.16189036200261997
     else:
-        params['lr'] = 1e-3
+        params['lr'] = 0.0009982096692042234
+        params['optimizer'] = "Adam"
+        params['batch_size'] = 128
+        params['dropout_rate'] = 0.4642061743187629
 
-    prefix_path = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/'
+    prefix_path = f'/../../hy-tmp/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-tmp/models/ecnn{EDL_USED}/'
     
     
     if not os.path.exists(prefix_path):
@@ -123,12 +131,9 @@ if __name__ == "__main__":
         # Update for the optimal hyperparameters
         #for key, value in temp_best_trial.params.items():
         #    params[key] = value
-        filename = f'sb{sb_n}_temp.pt' # change it later
+        filename = f'sb{sb_n}.pt' # change it later
         model_name = os.path.join(prefix_path, filename)
         params['saved_model'] = model_name
         #params['best_loss'] = temp_best_trial.value
-        params['optimizer'] = "Adam"
-        #params['lr'] = 1e-3
-        params['batch_size'] = 512
-        params['dropout_rate'] = 0.5
+
         retrain(params)

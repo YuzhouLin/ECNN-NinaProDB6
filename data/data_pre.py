@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 
-DATA_PATH = '../../NinaPro/DB6' # modify it for your own
+DATA_PATH = '../../hy-tmp/Data6' # modify it for your own
 
 # to segment the data with a sliding window
 def prepare_data(data_params):
@@ -24,7 +24,7 @@ def prepare_data(data_params):
                 for k in data_params['trial_list']:
                     X = []
                     Y = []
-                    temp_file = f'S{sb_n}_D{day_n}_T{time_n}_t{k}.pkl'
+                    temp_file = DATA_PATH + f'/Processed/S{sb_n}_D{day_n}_T{time_n}_t{k}.pkl'
                     if os.path.isfile(temp_file):
                         continue
                     # S:subject; D: day; T: time; t: trial

@@ -4,11 +4,10 @@ import torch
 import numpy as np
 import utils
 import helps_pre as pre
-#import optuna
-#from optuna.samplers import TPESampler
-#from optuna.pruners import MedianPruner
+import optuna
+from optuna.samplers import TPESampler
+from optuna.pruners import MedianPruner
 import copy
-from torch.utils.tensorboard import SummaryWriter
 import time
 
 parser = argparse.ArgumentParser()
@@ -22,7 +21,6 @@ parser.add_argument('--tcn', action='store_true', default=False,
 args = parser.parse_args()
 
 #ID = int(time.time())
-ID = 1
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
@@ -34,7 +32,7 @@ CHANNEL_N = 14
 TRAIN_TRIAL_LIST =  [1, 2, 3, 5, 6, 7, 9, 10, 11]
 VALID_TRIAL_LIST = [4, 8, 12]
 DATA_PATH = '/../../hy-tmp/Data6/Processed/'
-
+TCN_CHANNELS = [[16, 32], [16, 32, 64], [16, 32, 64, 128]]
 
 
 def run_training(params):
@@ -61,7 +59,9 @@ def run_training(params):
     dropout_rate=params['dropout_rate']
     # Load Model
     if TCN_USED:
-        tcn_channels = params['channels']
+        #tcn_channels = params['channels']
+        tcn_channels = TCN_CHANNELS[1]
+        #tcn_channels = TCN_CHANNELS[params['layer_o']]
         k_s = params['kernel_size']
         model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
     else:
@@ -78,14 +78,9 @@ def run_training(params):
     loss_params['device'] = DEVICE
     
 
-    writer = SummaryWriter(f'/../../tf_logs/{ID}') # tensorboard try
-    images, labels = next(iter(train_loader)) # tensorboard try
-    writer.add_graph(model, images.to(DEVICE)) # tensorboard try
     best_loss = np.inf
     early_stopping_iter = 10
-    torch.backends.cudnn.benchmark = True
-    for epoch in range(1, EPOCHS + 1):
-        #t0 = time.time()
+    for epoch in range(1, EPOCHS + 1): 
         # if 'annealing_step' in loss_params:
         loss_params['epoch_num'] = epoch
         train_losses, acc = eng.train(trainloaders, loss_params)
@@ -100,18 +95,10 @@ def run_training(params):
             f"train_acc: {train_acc}, "
             f"valid_acc: {valid_acc}. "
         )
-        writer.add_scalars('Loss', {'train':train_loss, 'val':valid_loss}, global_step=epoch)
-        #writer.add_scalar('ValidLoss', valid_loss, global_step=epoch)
-        writer.add_scalars('Acc', {'train': train_acc, 'val': valid_acc}, global_step=epoch)
-        for name, param in model.named_parameters():
-            writer.add_histogram(name, param.clone().cpu().data.numpy(), epoch)
-            writer.add_histogram(name + '/grad', param.requires_grad_().clone().cpu().data.numpy(), epoch)
-        #writer.add_scalar('TrainAcc', train_acc, global_step=epoch)
-        #writer.add_scalar('ValidAcc', valid_acc, global_step=epoch)
+
         if valid_loss < best_loss:
             best_loss = valid_loss
             early_stopping_counter = 0
-            '''
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -119,24 +106,26 @@ def run_training(params):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'train_loss': train_loss,
                 'valid_loss': valid_loss # best_loss
-                }, model_name)
-            '''
+                }, params['saved_model'])
         else:
             early_stopping_counter += 1
         if early_stopping_counter > early_stopping_iter:
-            writer.close()
             break
-        writer.close()
-        #print('{} seconds'.format(time.time() - t0))
-    return #best_loss
+    return best_loss
 
-'''
+
 def objective(trial, params):
     # Update the params for tuning with cross validation
     params['optimizer'] = trial.suggest_categorical(
         "optimizer", ["Adam", "RMSprop", "SGD"])
-    params['lr'] = trial.suggest_loguniform("lr", 1e-3, 1e-2)
-    params['batch_size'] = trial.suggest_int("batch_size", 128, 256, step=128)
+    params['lr'] = trial.suggest_loguniform("lr", 1e-6, 1e-2)
+    params['batch_size'] = trial.suggest_int("batch_size", 32, 512, step=32)
+    params['dropout_rate'] = trial.suggest_float("dropout_rate", 0.1, 0.9)
+
+    if TCN_USED:
+        params['kernel_size'] = trial.suggest_int("kernel_size", 2, 6)
+        #params['layer_o'] = trial.suggest_int("layer_o", 0, 2)
+
 
     if EDL_USED != 0:
         params['evi_fun'] = trial.suggest_categorical(
@@ -148,7 +137,7 @@ def objective(trial, params):
             params['l'] = trial.suggest_float(
                 "l", 0.01, 1.0, log=True)  # l:lambda
 
-    temp_loss = run_training(params, save_model=False)
+    temp_loss = run_training(params)
     
     #intermediate_value = temp_loss
     #trial.report(intermediate_value, i_f)
@@ -162,94 +151,54 @@ def objective(trial, params):
 
 
 def cv_hyperparam_study():
+    prefix_path = f'/models/etcn{EDL_USED}/' if TCN_USED else f'/models/ecnn{EDL_USED}/'
+    if not os.path.exists(prefix_path):
+        os.makedirs(prefix_path)
     params = {
         'class_n': CLASS_N,
-        'edl_used': EDL_USED
+        'edl_used': EDL_USED,
+        'saved_model': os.path.join(prefix_path, 'study.pt')
     }
     if EDL_USED != 0:
         params['edl_fun'] = 'mse'
         params['kl'] = EDL_USED - 1
  
-    for sb_n in range(1, 2): # modify it later
-        params['sb_n'] = sb_n
-        study_path = f'study/ecnn{EDL_USED}/sb{sb_n}'
-        if not os.path.exists(study_path):
-            os.makedirs(study_path)
-        sampler = TPESampler()
-        study = optuna.create_study(
-            direction="minimize",  # maximaze or minimaze our objective
-            sampler=sampler,  # parametrs sampling strategy
-            pruner=MedianPruner(
-                n_startup_trials=10,
-                n_warmup_steps=5,  # let's say num epochs
-                interval_steps=1,
-            ),
-            study_name='STUDY',
-            storage="sqlite:///" + study_path + f"/temp.db", # modify it later 
-            # storing study results
-            load_if_exists=False  # An error will be raised if same name
-        )
+    sb_n=1
 
-        study.optimize(lambda trial: objective(trial, params), n_trials=25)
-        print("Number of finished trials: ", len(study.trials))
-        print("Best trial:")
-        trial = study.best_trial
-        print("  Value: ", trial.value)
-        print("  Params: ")
-        for key, value in trial.params.items():
-            print("    {}: {}".format(key, value))
+    params['sb_n'] = sb_n
+    #study_path = f'/../../hy-tmp/study/ecnn{EDL_USED}/sb{sb_n}'
+    study_path = f'/study/etcn{EDL_USED}/' if TCN_USED else f'/study/ecnn{EDL_USED}/'
+    if not os.path.exists(study_path):
+        os.makedirs(study_path)
+    sampler = TPESampler()
+    study = optuna.create_study(
+        direction="minimize",  # maximaze or minimaze our objective
+        sampler=sampler,  # parametrs sampling strategy
+        pruner=MedianPruner(
+            n_startup_trials=10,
+            n_warmup_steps=5,  # let's say num epochs
+            interval_steps=1,
+        ), 
+        study_name='STUDY_tcn',
+        storage="sqlite:///" + study_path + f"/tcn_temp.db", # modify it later 
+        # storing study results
+        load_if_exists=True  # An error will be raised if same name
+    )
+
+    study.optimize(lambda trial: objective(trial, params), n_trials=25)
+    print("Number of finished trials: ", len(study.trials))
+    print("Best trial:")
+    trial = study.best_trial
+    print("  Value: ", trial.value)
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))
 
     return
-'''
+
 
 if __name__ == "__main__":
 
-    #cv_hyperparam_study()
-    #print(DEVICE)
-    params = {
-        'class_n': CLASS_N,
-        'edl_used': EDL_USED,
-        'tcn_used': TCN_USED
-    }
-
-    if EDL_USED != 0:
-        params['edl_fun'] = 'mse'
-        params['kl'] = EDL_USED - 1
-
+    cv_hyperparam_study()
     
-    if TCN_USED:
-        params['channels']=[16,32,64]
-        params['kernel_size'] = 3
-        params['lr'] = 1e-3
-    else:
-        params['lr'] = 1e-5
-
-    prefix_path = f'/../../hy-tmp/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-tmp/models/ecnn{EDL_USED}/'
-    
-    
-    if not os.path.exists(prefix_path):
-        os.makedirs(prefix_path)
-
-    # retraining and save the models
-
-    for sb_n in range(1, 2): # modify it to (1, 11) later
-        params['sb_n'] = sb_n
-        #core_path = f'study/ecnn{EDL_USED}/sb{sb_n}'
-        #study_path = "sqlite:///" + core_path + f"/t{test_trial}.db"
-        #loaded_study = optuna.load_study(
-        #    study_name="STUDY", storage=study_path)
-        #temp_best_trial = loaded_study.best_trial
-        # Update for the optimal hyperparameters
-        #for key, value in temp_best_trial.params.items():
-        #    params[key] = value
-        filename = f'sb{sb_n}-{ID}.pt' # change it later
-        model_name = os.path.join(prefix_path, filename)
-        params['saved_model'] = model_name
-        #params['best_loss'] = temp_best_trial.value
-        params['optimizer'] = "Adam"
-        #params['lr'] = 1e-3
-        params['batch_size'] = 64
-        params['dropout_rate'] = 0.1
-        run_training(params)
-
-    #os.system('shutdown')
+    os.system('shutdown')

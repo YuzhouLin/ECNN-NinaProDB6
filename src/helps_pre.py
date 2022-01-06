@@ -48,7 +48,7 @@ def load_data(params):
     batch_size = params['batch_size']
     if batch_size > 1:  # For training and validation
         data_loader = torch.utils.data.DataLoader(
-            data, batch_size=batch_size, shuffle=True, drop_last=True)
+            data, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
     elif batch_size == 1:  # For testing
         # default DataLoader: batch_size = 1, shuffle = False, drop_last =False
         data_loader = torch.utils.data.DataLoader(data)
@@ -57,17 +57,16 @@ def load_data(params):
 
 def load_data_test(params):
     # Specify for Ninapro DB6
-    X = [] # tensor
-    Y = [] # numpy
+    
+    #X = [] # tensor
+    #Y = [] # numpy
 
-    for trial_n in params['trial_list']:
-        temp = pd.read_pickle(
-            os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{params['day_n']}_T{params['time_n']}_t{trial_n}.pkl")
-        X.extend(temp['x'])
-        Y.extend(temp['y'])
-    X_torch = torch.from_numpy(np.array(X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
+    temp = pd.read_pickle(
+        os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{params['day_n']}_T{params['time_n']}_t{params['trial_n']}.pkl")
+
+    X_torch = torch.from_numpy(np.array(temp['x'], dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     if params['tcn_used']:
         X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
-    Y_numpy = np.array(Y, dtype=np.int64)
+    Y_numpy = np.array(temp['y'], dtype=np.int64)
     
     return X_torch, Y_numpy

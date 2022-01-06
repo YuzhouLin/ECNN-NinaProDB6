@@ -3,8 +3,9 @@ import torch
 import utils
 import helps_pre as pre
 import copy
-import optuna
-
+import numpy as np
+import pandas as pd
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -18,45 +19,67 @@ args = parser.parse_args()
 
 EDL_USED = args.edl
 TCN_USED = args.tcn
-DATA_PATH = '/data/'
-TRIAL_LIST = list(range(1, 2))
+DATA_PATH  = '/../../hy-tmp/Data6/Processed/'
+TRIAL_LIST = list(range(1, 13))
 DEVICE = torch.device('cpu')
+#DEVICE = pre.try_gpu()
 CHANNEL_N = 14
 CLASS_N = 8
 
 
 def test(params):
     # Load testing Data
-    inputs_torch, targets_numpy = pre.load_data_test(params)
-    
-    print(inputs_torch.size())
+    #inputs_torch, targets_numpy 
+
+
     # Load trained model
-    model_path = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/'
-    saved_model = model_path + f'sb{params["sb_n"]}_temp.pt' # later
+    model_path = f'/../../hy-tmp/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-tmp/models/ecnn{EDL_USED}/'
+    saved_model = model_path + f'sb{params["sb_n"]}.pt' # later
     
-    dropout_rate = 0.5 # later
+    #dropout_rate = 0.5 # later
+    dropout_rate= 0.16189036200261997
     if TCN_USED:
         tcn_channels = [16,32,64] # later
-        k_s = 3 # later
+        k_s = 2 # later
         model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
     else:
         model = utils.Model(number_of_class=CLASS_N, dropout=dropout_rate)
 
     model.load_state_dict(
         torch.load(saved_model, map_location=DEVICE))
+    #model.load_state_dict(torch.load(saved_model))
+    model.to(DEVICE)
+    #print(model)
     model.eval()
     
     # Get testing model outputs
-    outputs = model(inputs_torch.to(DEVICE)).detach()
+    folder = f'results/sb{params["sb_n"]}/'
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    filename = folder + 'accuracy.csv'
+    column_names = [*params, 'acc']
+    column_names.remove('data_path')
 
-    # Load the Testing Engine
-    eng = utils.EngineTest(outputs, targets_numpy)
-    del params['data_path']
-    del params['trial_list']
-    # update accuracy
+    for trial_n in TRIAL_LIST:
+        params['trial_n'] = trial_n
+        if os.path.exists(filename):
+            df = pd.read_csv(filename)
+        else:
+            df = pd.DataFrame(columns=column_names)
+        inputs_torch, targets_numpy = pre.load_data_test(params)
+        outputs = model(inputs_torch.to(DEVICE))
+        del inputs_torch
+        
+        preds = outputs.argmax(dim=1).detach().cpu().numpy()
+        
+        results = preds == targets_numpy
+
+        acc = np.sum(results)*1.0/len(results)
+        params['acc'] = acc
+        df = df.append([params])
+        print(acc)
+        df.to_csv(filename, index=False)
     
-    eng.update_result_acc(params)
-
     '''
     dict_for_update_R = copy.deepcopy(dict_for_update_acc)
     # Get the optimal activation function
@@ -79,12 +102,16 @@ def test(params):
 
 if __name__ == "__main__":
 
-    params = {'edl_used': EDL_USED, 'tcn_used': TCN_USED, 'trial_list': TRIAL_LIST, 'data_path': DATA_PATH}
+    params = {'edl_used': EDL_USED, 'tcn_used': TCN_USED, 'data_path': DATA_PATH}
     # test temp
     params['sb_n'] = 1
-    params['day_n'] = 5
-    params['time_n'] = 1
-    test(params)
+    #params['day_n'] = 1
+    #params['time_n'] = 1
+    for day_n in [1, 2, 3, 4, 5]: # later
+        params['day_n'] = day_n
+        for time_n in [1, 2]: # later
+            params['time_n'] = time_n
+            test(params)
     
 
     '''

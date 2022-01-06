@@ -40,6 +40,8 @@ class EngineTrain:
 
     def train(self, data_loaders, loss_params):
         final_loss = {}
+        final_acc = {}
+        results = {'train': [], 'val': []}
         for phase in ['train', 'val']:
             train_flag = phase == 'train'
             self.model.train() if train_flag else self.model.eval()
@@ -48,17 +50,21 @@ class EngineTrain:
             for _, (inputs, targets) in enumerate(data_loaders[phase]):
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)  # (batch_size,)
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
                 with torch.set_grad_enabled(train_flag):
                     outputs = self.model(inputs)  # (batch_size,class_n)
                     loss = self.criterion(outputs, targets, loss_params)
+                    preds = outputs.argmax(dim=1).detach().cpu().numpy()
+                    trues = targets.detach().cpu().numpy()
                     if train_flag:
                         loss.backward()
                         self.optimizer.step()
+                results[phase].extend(preds == trues)
                 final_loss[phase] += loss.item() * inputs.size(0)
                 data_n += inputs.size(0)
             final_loss[phase] = final_loss[phase] / data_n
-        return final_loss
+            final_acc[phase] = np.sum(results[phase])*1.0/len(results[phase])
+        return final_loss, final_acc
 
     def re_train(self, data_loader, loss_params):
         final_loss = 0.0
@@ -68,7 +74,7 @@ class EngineTrain:
         for _, (inputs, targets) in enumerate(data_loader):
             inputs = inputs.to(self.device)
             targets = targets.to(self.device)
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
             with torch.set_grad_enabled(True):
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets, loss_params)
@@ -76,7 +82,7 @@ class EngineTrain:
                 self.optimizer.step()
                 #loop.set_description(f"Epoch [{loss_params['epoch_num']}/{1000}]")
                 #loop.set_postfix(loss=loss.item())
-            final_loss += loss.item() * inputs.size(0)
+            final_loss += float(loss.item()) * inputs.size(0)
             data_n += inputs.size(0)
         final_loss = final_loss / data_n
         return final_loss
@@ -125,6 +131,12 @@ class EngineTest:
         # Save it
         df.to_csv(filename, index=False)
         return
+
+    def cal_acc(self, params):
+        # pred: prediction Results (not labels)
+        # true: Ground truth labels
+        recall = pro.cal_recall(self.outputs, self.targets)
+        return recall
 
     def update_result_R(self, params):
         # pred: prediction Results (not labels)
@@ -184,25 +196,40 @@ class Model(nn.Module):
         # k_c: kernel size of channel
         super(Model, self).__init__()
         # self._batch_norm0 = nn.BatchNorm2d(1)
-        self._conv1 = nn.Conv2d(1, 32, kernel_size=(k_c, 5))
+        self._batch_norm0 = nn.BatchNorm2d(1)
+        self._conv1 = nn.Conv2d(1, 32, kernel_size=(k_c, 5), bias=False)
         self._batch_norm1 = nn.BatchNorm2d(32)
         self._prelu1 = nn.PReLU(32)
         self._dropout1 = nn.Dropout2d(dropout)
         self._pool1 = nn.MaxPool2d(kernel_size=(1, 3))
 
-        self._conv2 = nn.Conv2d(32, 64, kernel_size=(k_c, 5))
+        self._conv2 = nn.Conv2d(32, 64, kernel_size=(k_c, 5), bias=False)
         self._batch_norm2 = nn.BatchNorm2d(64)
         self._prelu2 = nn.PReLU(64)
         self._dropout2 = nn.Dropout2d(dropout)
         self._pool2 = nn.MaxPool2d(kernel_size=(1, 3))
 
-        self._fc1 = nn.Linear(26880, 500)
-        # 8 = 12 channels - 2 -2 ;  53 = ((500-4)/3-4)/3
-        self._batch_norm3 = nn.BatchNorm1d(500)
-        self._prelu3 = nn.PReLU(500)
-        self._dropout3 = nn.Dropout(dropout)
+        self._conv3 = nn.Conv2d(64, 128, kernel_size=(k_c, 5), bias=False)
+        self._batch_norm3 = nn.BatchNorm2d(128)
+        self._prelu3 = nn.PReLU(128)
+        self._dropout3 = nn.Dropout2d(dropout)
+        self._pool3 = nn.MaxPool2d(kernel_size=(1, 3))
 
-        self._output = nn.Linear(500, number_of_class)
+        #self._fc1 = nn.Linear(26880, 500)
+        #self._fc1 = nn.Linear(50688, 500)
+        #self._fc1 = nn.Linear(6144, 500)
+        #self._fc1 = nn.Linear(5120, 1024)
+        self._fc1 = nn.Linear(6144*2, 1024)
+        self._fc_batch_norm1 = nn.BatchNorm1d(1024)
+        self._fc_prelu1 = nn.PReLU(1024)
+        self._fc_dropout1 = nn.Dropout(dropout)
+
+        self._fc2 = nn.Linear(1024, 256)
+        self._fc_batch_norm2 = nn.BatchNorm1d(256)
+        self._fc_prelu2 = nn.PReLU(256)
+        self._fc_dropout2 = nn.Dropout(dropout)
+        
+        self._output = nn.Linear(256, number_of_class)
         self.initialize_weights()
 
         print("Number Parameters: ", self.get_n_params())
@@ -219,27 +246,38 @@ class Model(nn.Module):
 
     def initialize_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 torch.nn.init.kaiming_normal_(m.weight)
                 m.bias.data.zero_()
-            elif isinstance(m, nn.Linear):
-                torch.nn.init.kaiming_normal_(m.weight)
-                m.bias.data.zero_()
+            #elif isinstance(m, nn.Linear):
+            #    torch.nn.init.kaiming_normal_(m.weight)
+            #    m.bias.data.zero_()
 
     def forward(self, x):
         # x = x.permute(0,1,3,2)  --> batch * 1 * 16 * 50
         # print(x.size())
-        conv1 = self._dropout1(self._prelu1(self._batch_norm1(self._conv1(x))))
+        conv1 = self._dropout1(self._prelu1(self._batch_norm1(self._conv1(self._batch_norm0(x)))))
+        #conv1 = self._dropout1(self._prelu1(self._batch_norm1(self._conv1(x))))
+    
         # conv1 = self._dropout1(
         # self._prelu1(self._batch_norm1(self._conv1(self._batch_norm0(x)))))
         pool1 = self._pool1(conv1)
+        
         conv2 = self._dropout2(
             self._prelu2(self._batch_norm2(self._conv2(pool1))))
         pool2 = self._pool2(conv2)
-        flatten_tensor = pool2.view(pool2.size(0), -1)
-        fc1 = self._dropout3(
-            self._prelu3(self._batch_norm3(self._fc1(flatten_tensor))))
-        output = self._output(fc1)
+        
+        conv3 = self._dropout3(
+            self._prelu3(self._batch_norm3(self._conv3(pool2))))
+        pool3 = self._pool3(conv3)
+        #flatten_tensor = pool2.view(pool2.size(0), -1)
+        flatten_tensor = pool3.view(pool3.size(0), -1)
+        #print(flatten_tensor.size())
+        fc1 = self._fc_dropout1(
+            self._fc_prelu1(self._fc_batch_norm1(self._fc1(flatten_tensor))))
+        fc2 = self._fc_dropout2(
+            self._fc_prelu2(self._fc_batch_norm2(self._fc2(fc1))))
+        output = self._output(fc2)
         return output
 
 class Chomp1d(nn.Module):
@@ -270,13 +308,20 @@ class TemporalBlock(nn.Module):
                                  self.conv2, self.chomp2, self.relu2, self.dropout2)
         self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
         self.relu = nn.ReLU()
-        self.init_weights()
+        #self.init_weights()
+        self.initialize_weights()
 
     def init_weights(self):
         self.conv1.weight.data.normal_(0, 0.01)
         self.conv2.weight.data.normal_(0, 0.01)
         if self.downsample is not None:
             self.downsample.weight.data.normal_(0, 0.01)
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv1d):
+                torch.nn.init.kaiming_normal_(m.weight)
+                m.bias.data.zero_()
 
     def forward(self, x):
         out = self.net(x)
@@ -304,10 +349,25 @@ class TemporalConvNet(nn.Module):
 class TCN(nn.Module):
     def __init__(self, input_size, output_size, num_channels, kernel_size, dropout):
         super(TCN, self).__init__()
+        self._batch_norm0 = nn.BatchNorm1d(14)
         self._tcn1 = TemporalConvNet(input_size, num_channels, kernel_size=kernel_size, dropout=dropout)
         #self.linear = nn.Linear(num_channels[-1], output_size)
         self._fc1 = nn.Linear(num_channels[-1]*400, 5120)
-        self._output = nn.Linear(5120, output_size)
+        #self._fc_batch_norm1 = nn.BatchNorm1d(5120)
+        #self._fc_prelu1 = nn.PReLU(5120)
+        #self._fc_dropout1 = nn.Dropout(dropout)
+        #self._output = nn.Linear(5120, output_size)
+        self._fc2 = nn.Linear(5120, 1024)
+        self._fc3 = nn.Linear(1024, 256)
+        self._output = nn.Linear(256, output_size)
+        #print("Number Parameters: ", self.get_n_params())
+        self.initialize_weights()
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.kaiming_normal_(m.weight)
+                m.bias.data.zero_()
 
     def forward(self, inputs):
         """Inputs have to have dimension (N, C_in, L_in)"""
@@ -317,8 +377,14 @@ class TCN(nn.Module):
             x.append(torch.mean(inputs[:, A[i], :], dim=1))
         y1=self.tcn(torch.stack(x, dim=1))
         '''
-        temporal_features1 = self._tcn1(inputs)  # input should have dimension (N, C, L)
+        temporal_features1 = self._tcn1(self._batch_norm0(inputs))  # input should have dimension (N, C, L)
         #o = self.linear(y1[:, :, -1])
+        
         fc1 = self._fc1(temporal_features1.view(-1,64*400))
-        output = self._output(fc1)
+        fc2 = self._fc2(fc1)
+        fc3 = self._fc3(fc2)
+
+        #fc1 = self._fc_dropout1(
+        #    self._fc_prelu1(self._fc_batch_norm1(self._fc1(temporal_features1.view(-1,64*400)))))
+        output = self._output(fc3)
         return output # F.log_softmax(o, dim=1)
