@@ -73,6 +73,8 @@ def retrain(params):
         #    loss_params['epoch_num'] = epoch
         loss_params['epoch_num'] = epoch
         train_loss = eng.re_train(train_loader, loss_params)
+        if torch.isnan(train_loss) or torch.isinf(train_loss):
+            raise ValueError("nan or inf")
         print(
             f"epoch:{epoch}, train_loss:{train_loss}")
             #f"best_loss_from_cv:{best_loss}")
