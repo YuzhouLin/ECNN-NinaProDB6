@@ -1,0 +1,79 @@
+DATA_PATH:
+  /../../hy-tmp/Data6/Processed/
+
+STUDY_PATH:
+  /study/
+  # /../../hy-tmp/study/
+
+CLASS_NAMES: 
+  ['Rest', 'Large diameter grasp', 'Adducted Thumb grasp', 'Index finger extension grasp', 'Medium wrap', 'Writing tripod grasp', 'Power sphere grasp', 'Precision sphere grasp']
+
+DATA_CONFIG:
+  sb_n: 1
+  day_list: [1]
+  time_list: [1, 2]
+  trial_n: 12
+  channel_n: 14 # number of sEMG channels
+
+CV:
+  valid_trial_list:
+    - [2, 8]
+    - [3, 9]
+    - [4, 10]
+    - [5, 11]
+    - [6, 12]
+
+DATA_LOADER:
+  shuffle: True
+  drop_last: True
+  num_workers: 2
+  pin_memory: True
+
+TRAINING:
+  epochs: 100
+  early_stopping_iter: 10
+  
+HPO_STUDY:
+  sampler:
+    TPESampler() # eval()
+  direction:
+    minimize
+  pruner:
+    MedianPruner(n_startup_trials=10, n_warmup_steps=5, interval_steps=1) # eval()
+  trial_n:
+    25
+
+HP_SEARCH:  
+  EDL0: &edl_base0
+    optimizer:
+      trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+    lr:
+      trial.suggest_loguniform("lr", 1e-6, 1e-2)
+    batch_size:
+      trial.suggest_int("batch_size", 32, 512, step=32)
+    dropout_rate:
+      trial.suggest_float("dropout_rate", 0.1, 0.9)
+
+  TCN_CHANNELS:
+    [[16, 32, 64], [16, 32, 64, 128], [16, 32, 64, 128, 256]]
+
+  TCN: &tcn_base
+    kernel_size:
+      trial.suggest_int("kernel_size", 2, 6)
+    tcn_layer_n:
+      trial.suggest_int("tcn_layer_n", 3, 5)
+
+  EDL1: &edl_base1
+    <<: *edl_base0
+    evi_fun:
+      trial.suggest_categorical("evi_fun", ["relu", "softplus", "exp"])
+  EDL2: &edl_base2
+    <<: *edl_base1
+    annealing_step: 
+      trial.suggest_int("annealing_step", 10, 60, step=5)
+  EDL3: &edl_base3
+    <<: *edl_base1
+    l: 
+      trial.suggest_float("l", 0.01, 1.0, log=True)
+
+

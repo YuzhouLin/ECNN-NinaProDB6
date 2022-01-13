@@ -29,27 +29,33 @@ def update_loss_params(params):
     return loss_params
 
 
-def load_data(params):
+def load_data(data_path, sb_n, day_list, time_list, trial_list, **kwargs):
+    arr_default = {'tcn_used': False, 'batch_size': 128, 'shuffle': True, 'drop_last': True, 'num_workers': 2, 'pin_memory': True}
+
+    for key, item in kwargs:
+        if key in arr_default:
+            arr_default[key] = item
+    
     # Specify for Ninapro DB6
     X = []  # L*1*14(channels)*500(samples)
     Y = []
-    for day_n in params['day_list']:
-        for time_n in params['time_list']:
-            for trial_n in params['trial_list']:
+    for day_n in day_list:
+        for time_n in time_list:
+            for trial_n in trial_list:
                 temp = pd.read_pickle(
-                    os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{day_n}_T{time_n}_t{trial_n}.pkl")
+                    os.getcwd() + data_path + f"S{sb_n}_D{day_n}_T{time_n}_t{trial_n}.pkl")
                 X.extend(temp['x'])
                 Y.extend(temp['y'])
     X_torch = torch.from_numpy(np.array(X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_torch = torch.from_numpy(np.array(Y, dtype=np.int64))
-    if params['tcn_used']:
+    if arr_default['tcn_used']:
         X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
     data = TensorDataset(X_torch, Y_torch)
-    batch_size = params['batch_size']
-    if batch_size > 1:  # For training and validation
+
+    if arr_default['batch_size'] > 1:  # For training and validation
         data_loader = torch.utils.data.DataLoader(
-            data, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
-    elif batch_size == 1:  # For testing
+            data, batch_size=arr_default['batch_size'], shuffle=arr_default['shuffle'], drop_last=arr_default['drop_last'], num_workers=arr_default['num_workers'], pin_memory=arr_default['pin_memory'])
+    elif arr_default['batch_size'] == 1:  # For testing
         # default DataLoader: batch_size = 1, shuffle = False, drop_last =False
         data_loader = torch.utils.data.DataLoader(data)
     return data_loader

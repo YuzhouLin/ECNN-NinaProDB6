@@ -31,8 +31,8 @@ def kl_divergence(alpha, num_classes, device=None):
     # if not device:
     #     device = get_device()
     beta = torch.ones([1, num_classes], dtype=torch.float32, device=device)
-    S_alpha = torch.sum(alpha, dim=1, keepdim=True)
-    S_beta = torch.sum(beta, dim=1, keepdim=True)
+    S_alpha = torch.sum(alpha, dim=1, keepdim=True, device=device)
+    S_beta = torch.sum(beta, dim=1, keepdim=True, device=device)
     lnB = torch.lgamma(S_alpha) - \
         torch.sum(torch.lgamma(alpha), dim=1, keepdim=True)
     lnB_uni = torch.sum(torch.lgamma(beta), dim=1,
@@ -46,11 +46,11 @@ def kl_divergence(alpha, num_classes, device=None):
     return kl
 
 
-def loglikelihood_loss(y, alpha, device=None):
+def loglikelihood_loss(y, alpha):
     # if not device:
     #    device = get_device()
-    y = y.to(device)
-    alpha = alpha.to(device)
+    #y = y.to(device)
+    #alpha = alpha.to(device)
     S = torch.sum(alpha, dim=1, keepdim=True)
     loglikelihood_err = torch.sum(
         (y - (alpha / S)) ** 2, dim=1, keepdim=True)
@@ -61,69 +61,30 @@ def loglikelihood_loss(y, alpha, device=None):
 
 
 def mse_loss(y, alpha, params):
-    # if annealing_step = 0, no kl
-    y = y.to(params['device'])  # 256*12
-    alpha = alpha.to(params['device'])  # 256*12
-    # S = torch.sum(alpha, dim=1, keepdim=True)
-    loglikelihood = loglikelihood_loss(y, alpha, device=params['device'])
-    '''
-    belief = (alpha-1.0)/S
-    batch_n = belief.size()[0]
-    u_dis = torch.zeros(batch_n,1).to(device)
-    for index_k in range(num_classes):
-        temp0 = torch.zeros(batch_n,1).to(device)
-        temp1 = torch.zeros(batch_n,1).to(device)
-        for index_j in range(num_classes):
-            if index_j!=index_k:
-                k = belief[:,index_k].reshape(batch_n ,1).to(device)
-                j = belief[:,index_j].reshape(batch_n ,1).to(device)
-                temp0 += j*(1.0-torch.abs(k-j)/(k+j+1e-8))
-                temp1 += j
-        u_dis += k*temp0/(temp1+1e-8)
-    '''
+    device = params['device']
+    y = y.to(device)
+    alpha = alpha.to(device)
+    loglikelihood = loglikelihood_loss(y, alpha)
 
-    if params['kl'] == 0:
-        # return loglikelihood_err + loglikelihood_var
-        # return 0.6*(loglikelihood_err + loglikelihood_var) + 0.4*u_dis
+    if params['edl_used'] == 1:
         return loglikelihood
-    elif params['kl'] == 1:
+    elif params['edl_used'] == 2:
         annealing_coef = \
             torch.min(
-                torch.tensor(1.0, dtype=torch.float32),
+                torch.tensor(1.0, dtype=torch.float32, device=device),
                 torch.tensor(
                     params['epoch_num'] / params['annealing_step'],
-                    dtype=torch.float32)
+                    dtype=torch.float32, device=device)
             )
         kl_alpha = (alpha - 1) * (1 - y) + 1
-        # target_alpha = torch.sum(alpha * y, dim=1, keepdim=True)
-        # p_t = target_alpha/S
-        # print(target_alpha.size())
-        # torch.sum(alpha[y==1],dim=1,keepdim=True)
-        # u = num_classes/S
-
-        # A = loglikelihood_err + loglikelihood_var
-        # cond_coef = torch.where(loglikelihood_err>0.5,1.0,-1.0)
-
-        # print(cond_coef)
-        # loss = A - annealing_coef*(1.-p_t)**2*u
-
-        # loss = A + (loglikelihood_err-0.5)**2*u
-
-        # cond_coef*(1.-p_t)**2*u
-
-        # return loss
-        # total_S = torch.sum(alpha,dim=1,keepdim=True)
-        # print(total_S)
-        # u = u*annealing_coef
         kl_div = annealing_coef * \
-            kl_divergence(kl_alpha, params['class_n'], device=params['device'])
-        # a = torch.tensor(0.8, dtype=torch.float32)
+            kl_divergence(kl_alpha, params['class_n'], device=device)
         return loglikelihood + kl_div  # + (1-p_t)*kl_div
-    elif params['kl'] == 2:
+    elif params['edl_used'] == 3:
         kl_alpha = (alpha - 1) * (1 - y) + 1
         coef = torch.tensor(params['l'], dtype=torch.float32)
         kl_div = coef * \
-            kl_divergence(kl_alpha, params['class_n'], device=params['device'])
+            kl_divergence(kl_alpha, params['class_n'], device=device)
         return loglikelihood + kl_div
 
 
