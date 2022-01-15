@@ -1,6 +1,7 @@
 logs/
-*pkl
+*.pkl
 *.mat
 __pycache__/
 .vscode/
 models/
+*.pt

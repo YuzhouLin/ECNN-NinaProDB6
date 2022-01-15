@@ -23,6 +23,7 @@ args = parser.parse_args()
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
+GLOBAL_BEST_LOSS = np.inf
 
 
 def run_training(fold, cfg):
@@ -41,7 +42,7 @@ def run_training(fold, cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS[cfg.HP.tcn_layer_n-3], kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     model.to(DEVICE)
@@ -58,12 +59,12 @@ def run_training(fold, cfg):
 
     best_loss = np.inf
     early_stopping_iter = cfg.TRAINING.early_stopping_iter
+
     for epoch in range(1, cfg.TRAINING.epochs + 1): 
         # if 'annealing_step' in loss_params:
         if EDL_USED == 2:
             loss_params['epoch_num'] = epoch
         train_losses, acc = eng.train(trainloaders, loss_params)
-        
         train_loss = train_losses['train']
         valid_loss = train_losses['val']
         train_acc = acc['train']
@@ -94,6 +95,17 @@ def run_training(fold, cfg):
             early_stopping_counter += 1
         if early_stopping_counter > early_stopping_iter:
             break
+    
+    global GLOBAL_BEST_LOSS
+    if best_loss < GLOBAL_BEST_LOSS:
+        GLOBAL_BEST_LOSS = best_loss
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'train_loss': train_loss,
+            'valid_loss': valid_loss, # best_loss
+            'train_acc:': train_acc,
+            'valid_acc': valid_acc
+            }, 'temp.pt') # modify it later
     return best_loss
 
 
@@ -113,6 +125,7 @@ def objective(trial, cfg):
     for fold_n in range(len(cfg.CV.valid_trial_list)):
         temp_loss = run_training(fold_n, cfg)
         intermediate_value = temp_loss
+        #
         trial.report(intermediate_value, fold_n)
         if trial.should_prune():
             raise optuna.TrialPruned()
@@ -130,7 +143,7 @@ def cv_hyperparam_study(sb_n=1):
         
     # Check study path
     study_dir = f'etcn{EDL_USED}' if TCN_USED else f'ecnn{EDL_USED}'
-    study_path = cfg.STUDY_PATH + study_dir
+    study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
     if not os.path.exists(study_path):
         os.makedirs(study_path)
     
@@ -140,7 +153,7 @@ def cv_hyperparam_study(sb_n=1):
         direction=cfg.HPO_STUDY.direction,  # maximaze or minimaze our objective
         sampler=sampler,  # parametrs sampling strategy
         pruner=eval(cfg.HPO_STUDY.pruner),
-        study_name=study_path+f'_sb{sb_n}',
+        study_name=study_dir+f'_sb{sb_n}',
         storage=f"sqlite:///{study_dir}_sb{sb_n}.db", 
         load_if_exists=True
     )

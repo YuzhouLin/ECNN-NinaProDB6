@@ -32,7 +32,7 @@ def update_loss_params(params):
 def load_data(data_path, sb_n, day_list, time_list, trial_list, **kwargs):
     arr_default = {'tcn_used': False, 'batch_size': 128, 'shuffle': True, 'drop_last': True, 'num_workers': 2, 'pin_memory': True}
 
-    for key, item in kwargs:
+    for key, item in kwargs.items():
         if key in arr_default:
             arr_default[key] = item
     
