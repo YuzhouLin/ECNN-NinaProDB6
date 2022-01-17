@@ -1,8 +1,8 @@
 DATA_PATH:
   /../../hy-tmp/Data6/Processed/
 
-DATA_PATH:
-  /../../hy-tmp/Data6/Processed/
+MODEL_PATH:
+  /models/
   
 STUDY_PATH:
   /study/
@@ -42,7 +42,7 @@ HPO_STUDY:
   direction:
     minimize
   pruner:
-    MedianPruner(n_startup_trials=10, n_warmup_steps=5, interval_steps=1) # eval()
+    MedianPruner(n_startup_trials=5, n_warmup_steps=1, interval_steps=1) # eval()
   trial_n:
     25
 

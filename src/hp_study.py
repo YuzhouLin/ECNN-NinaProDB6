@@ -105,7 +105,7 @@ def run_training(fold, cfg):
             'valid_loss': valid_loss, # best_loss
             'train_acc:': train_acc,
             'valid_acc': valid_acc
-            }, 'temp.pt') # modify it later
+            }, cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt') # modify it later
     return best_loss
 
 
@@ -125,10 +125,10 @@ def objective(trial, cfg):
     for fold_n in range(len(cfg.CV.valid_trial_list)):
         temp_loss = run_training(fold_n, cfg)
         intermediate_value = temp_loss
-        #
         trial.report(intermediate_value, fold_n)
         if trial.should_prune():
             raise optuna.TrialPruned()
+    
         all_losses.append(temp_loss)
 
     return np.mean(all_losses)
@@ -146,6 +146,11 @@ def cv_hyperparam_study(sb_n=1):
     study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
     if not os.path.exists(study_path):
         os.makedirs(study_path)
+
+    # Check model saved path
+    cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
+    if not os.path.exists(cfg.model_path):
+        os.makedirs(cfg.model_path)
     
     # Create Optuna Study
     sampler = eval(cfg.HPO_STUDY.sampler)
