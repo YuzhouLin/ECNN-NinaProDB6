@@ -1,0 +1,7 @@
+- best_loss: 0.5514733517719315
+- batch_size: 224
+  dropout_rate: 0.19973784116055243
+  evi_fun: softplus
+  kernel_size: 6
+  lr: 0.0003416315569565271
+  optimizer: Adam

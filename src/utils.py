@@ -70,7 +70,6 @@ class EngineTrain:
         final_loss = 0.0
         self.model.train()
         data_n = 0.0
-        #loop = tqdm(enumerate(data_loader), total=len(data_loader), leave=False)
         for _, (inputs, targets) in enumerate(data_loader):
             inputs = inputs.to(self.device)
             targets = targets.to(self.device)
@@ -232,7 +231,7 @@ class Model(nn.Module):
         self._output = nn.Linear(256, number_of_class)
         self.initialize_weights()
 
-        print("Number Parameters: ", self.get_n_params())
+        #print("Number Parameters: ", self.get_n_params())
 
     def get_n_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -248,7 +247,8 @@ class Model(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 torch.nn.init.kaiming_normal_(m.weight)
-                m.bias.data.zero_()
+                if m.bias is not None:
+                    m.bias.data.zero_()
             #elif isinstance(m, nn.Linear):
             #    torch.nn.init.kaiming_normal_(m.weight)
             #    m.bias.data.zero_()

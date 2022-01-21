@@ -1,0 +1,8 @@
+- best_loss: 0.6624139396499944
+- batch_size: 128
+  dropout_rate: 0.3228401781610031
+  evi_fun: relu
+  kernel_size: 3
+  l: 0.010642888991825956
+  lr: 0.00021158029838374274
+  optimizer: Adam

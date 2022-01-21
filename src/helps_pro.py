@@ -31,8 +31,8 @@ def kl_divergence(alpha, num_classes, device=None):
     # if not device:
     #     device = get_device()
     beta = torch.ones([1, num_classes], dtype=torch.float32, device=device)
-    S_alpha = torch.sum(alpha, dim=1, keepdim=True, device=device)
-    S_beta = torch.sum(beta, dim=1, keepdim=True, device=device)
+    S_alpha = torch.sum(alpha, dim=1, keepdim=True)
+    S_beta = torch.sum(beta, dim=1, keepdim=True)
     lnB = torch.lgamma(S_alpha) - \
         torch.sum(torch.lgamma(alpha), dim=1, keepdim=True)
     lnB_uni = torch.sum(torch.lgamma(beta), dim=1,

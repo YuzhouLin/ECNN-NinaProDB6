@@ -181,4 +181,4 @@ if __name__ == "__main__":
 
     cv_hyperparam_study()
     
-    os.system('shutdown')
+    #os.system('shutdown')

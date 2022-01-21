@@ -1,0 +1,5 @@
+- best_loss: 0.6683139944631413
+- batch_size: 192
+  dropout_rate: 0.36426873118606773
+  lr: 0.0009504510270924288
+  optimizer: Adam
