@@ -107,9 +107,11 @@ class EngineTest:
         pred_results = preds == self.targets
         return pred_results
 
-    def get_scores(self,acti_fun,edl_used)    #  Calculate the scores
+    def get_scores(self,acti_fun,edl_used):    #  Calculate the scores
         output_results = self.get_output_results(acti_fun)
         scores = pro.cal_scores(output_results, edl_used)
+        for key, value in scores.items():
+            scores[key] = np.squeeze(value)
         return scores
 
     def update_result_acc(self, params):

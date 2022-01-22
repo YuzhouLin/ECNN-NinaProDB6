@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import yaml
 from easydict import EasyDict as edict
+import pdb
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -20,13 +21,14 @@ args = parser.parse_args()
 
 EDL_USED = args.edl
 TCN_USED = args.tcn
-DEVICE = torch.device('cpu')
-
+# DEVICE = torch.device('cpu')
+DEVICE = pre.try_gpu()
 
 def test(cfg):
 
     # Load trained model
-    saved_model = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
+    saved_model_path = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
+    checkpoint = torch.load(saved_model_path)
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
@@ -34,9 +36,9 @@ def test(cfg):
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
         
-    model.load_state_dict(
-        torch.load(saved_model['model_state_dict'], map_location=DEVICE))
-    #model.load_state_dict(torch.load(saved_model))
+    #model.load_state_dict(
+    #    torch.load(checkpoint['model_state_dict'], map_location=DEVICE))
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.to(DEVICE)
     model.eval()
     
@@ -57,10 +59,10 @@ def test(cfg):
                 acti_fun = cfg.HP.evi_fun if EDL_USED else 'softmax'
                 scores = eng.get_scores(acti_fun, EDL_USED)
                 temp_dict['actual'] = Y_numpy
-                temp_dict['predict'] = predict
+                temp_dict['predict'] = np.squeeze(predict)
                 temp_dict.update(scores)
-                df = pd.DataFrame(temp_dict)
-                filename = cfg.RESULT_PATH + f'd{day_n}_t{time_n}_T{trial_n}'
+                df = pd.DataFrame(temp_dict, index =  np.arange(1,len(Y_numpy)+1,1))
+                filename = cfg.RESULT_PATH + f'd{day_n}_t{time_n}_T{trial_n}.csv'
                 df.to_csv(filename, index=True, index_label=cfg.index)
     return
 
@@ -83,10 +85,16 @@ if __name__ == "__main__":
     for key, item in hp[1].items():
         cfg.HP[key] = item
 
+    # Check results saved path
+    cfg.RESULT_PATH = os.getcwd() + cfg.RESULT_PATH + study_dir
+    if not os.path.exists(cfg.RESULT_PATH):
+        os.makedirs(cfg.RESULT_PATH)
+
+
     cfg.DATA_CONFIG.day_list = [1, 2, 3, 4, 5]
     #cfg.colunmns = ['sb', 'model', 'day', 'time', 'trial', 'window', 'actual', 'predict', 'u_entropy', 'u_nnmp', 'u_vac', 'u_diss', 'u_overall']
     #cfg.colunmns = ['actual', 'predict', 'u_entropy', 'u_nnmp', 'u_vac', 'u_diss', 'u_overall']
     cfg.index = 'window'
     
-    cfg.RESULT_PATH = os.getcwd() + f'/results/sb{cfg.DATA_CONFIG.sb_n}'
+    cfg.RESULT_PATH = cfg.RESULT_PATH + f'/sb{cfg.DATA_CONFIG.sb_n}'
     test(cfg)

@@ -2,9 +2,19 @@ import pickle
 import scipy.io as io
 import numpy as np
 import os
+import argparse
 
 
-DATA_PATH = '../../hy-tmp/Data6' # modify it for your own
+# DATA_PATH = '../../hy-tmp/Data6' # modify it for your own
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--data_path', type=str, 
+    help='the place to save data')
+
+
+args = parser.parse_args()
+DATA_PATH = args.data_path
+
 
 # to segment the data with a sliding window
 def prepare_data(data_params):

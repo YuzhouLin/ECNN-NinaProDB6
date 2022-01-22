@@ -14,7 +14,7 @@ mkdir ../../hy-tmp/Data6/Processed
 mv ../../hy-tmp/DB6_s1_a/*.mat ../../hy-tmp/Data6/s1
 mv ../../hy-tmp/DB6_s1_b/*.mat ../../hy-tmp/Data6/s1
 # Step4：数据预处理，保存成pkl的形式存入 hy-tmp/Data6/Processed
-python data/data_pre.py
+python data/data_pre.py --data_path '../../hy-tmp/Data6'
 # Step5: 删除多余文件
 rm -r ../../hy-tmp/DB6_s1_a/
 rm -r ../../hy-tmp/DB6_s1_b/

@@ -1,11 +1,14 @@
 DATA_PATH:
-  /../../hy-tmp/Data6/Processed/
+  /../../hy-nas/Data6/Processed/
 
 MODEL_PATH:
   /models/
   
 STUDY_PATH:
   /study/
+
+RESULT_PATH:
+  /results/
   # /../../hy-tmp/study/
 
 CLASS_NAMES: 
