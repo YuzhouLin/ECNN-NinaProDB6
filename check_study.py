@@ -1,6 +1,8 @@
 import optuna
 
-study = optuna.load_study(study_name="etcn1_sb1", storage="sqlite:///etcn1_sb1.db")
+study_name = 'ecnn2_sb1'
+study = optuna.load_study(study_name=study_name, storage=f"sqlite:///{study_name}.db")
 
 for i in range(len(study.trials)):
     print(study.trials[i])
+    print('-----------------------')

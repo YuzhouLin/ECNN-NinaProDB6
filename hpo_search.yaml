@@ -47,7 +47,7 @@ HPO_STUDY:
   pruner:
     MedianPruner(n_startup_trials=5, n_warmup_steps=1, interval_steps=1) # eval()
   trial_n:
-    25
+    5
 
 HP_SEARCH:  
   EDL0: &edl_base0
