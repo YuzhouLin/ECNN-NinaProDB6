@@ -61,17 +61,17 @@ def load_data(data_path, sb_n, day_list, time_list, trial_list, **kwargs):
     return data_loader
 
 
-def load_data_test(params):
+def load_data_test(data_path, sb_n, day_n, time_n, trial_n, tcn_used=False):
     # Specify for Ninapro DB6
     
     #X = [] # tensor
     #Y = [] # numpy
 
     temp = pd.read_pickle(
-        os.getcwd() + params['data_path'] + f"S{params['sb_n']}_D{params['day_n']}_T{params['time_n']}_t{params['trial_n']}.pkl")
+        os.getcwd() + data_path + f"S{sb_n}_D{day_n}_T{time_n}_t{trial_n}.pkl")
 
     X_torch = torch.from_numpy(np.array(temp['x'], dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
-    if params['tcn_used']:
+    if tcn_used:
         X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
     Y_numpy = np.array(temp['y'], dtype=np.int64)
     

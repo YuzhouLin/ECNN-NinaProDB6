@@ -2,10 +2,11 @@ import argparse
 import torch
 import utils
 import helps_pre as pre
-import copy
 import numpy as np
 import pandas as pd
 import os
+import yaml
+from easydict import EasyDict as edict
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -19,110 +20,73 @@ args = parser.parse_args()
 
 EDL_USED = args.edl
 TCN_USED = args.tcn
-DATA_PATH  = '/../../hy-tmp/Data6/Processed/'
-TRIAL_LIST = list(range(1, 13))
 DEVICE = torch.device('cpu')
-#DEVICE = pre.try_gpu()
-CHANNEL_N = 14
-CLASS_N = 8
 
 
-def test(params):
-    # Load testing Data
-    #inputs_torch, targets_numpy 
-
+def test(cfg):
 
     # Load trained model
-    model_path = f'/../../hy-tmp/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-tmp/models/ecnn{EDL_USED}/'
-    saved_model = model_path + f'sb{params["sb_n"]}.pt' # later
-    
-    #dropout_rate = 0.5 # later
-    dropout_rate= 0.16189036200261997
+    saved_model = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
+    n_class = len(cfg.CLASS_NAMES)
+    # Load Model
     if TCN_USED:
-        tcn_channels = [16,32,64] # later
-        k_s = 2 # later
-        model = utils.TCN(input_size=CHANNEL_N, output_size=CLASS_N, num_channels=tcn_channels, kernel_size=k_s, dropout=dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
-        model = utils.Model(number_of_class=CLASS_N, dropout=dropout_rate)
-
+        model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
+        
     model.load_state_dict(
-        torch.load(saved_model, map_location=DEVICE))
+        torch.load(saved_model['model_state_dict'], map_location=DEVICE))
     #model.load_state_dict(torch.load(saved_model))
     model.to(DEVICE)
-    #print(model)
     model.eval()
     
-    # Get testing model outputs
-    folder = f'results/sb{params["sb_n"]}/'
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-    filename = folder + 'accuracy.csv'
-    column_names = [*params, 'acc']
-    column_names.remove('data_path')
-
-    for trial_n in TRIAL_LIST:
-        params['trial_n'] = trial_n
-        if os.path.exists(filename):
-            df = pd.read_csv(filename)
-        else:
-            df = pd.DataFrame(columns=column_names)
-        inputs_torch, targets_numpy = pre.load_data_test(params)
-        outputs = model(inputs_torch.to(DEVICE))
-        del inputs_torch
-        
-        preds = outputs.argmax(dim=1).detach().cpu().numpy()
-        
-        results = preds == targets_numpy
-
-        acc = np.sum(results)*1.0/len(results)
-        params['acc'] = acc
-        df = df.append([params])
-        print(acc)
-        df.to_csv(filename, index=False)
+    # Load testing Data
+    #inputs_torch, targets_numpy
+    trial_list = list(range(1,cfg.DATA_CONFIG.trial_n+1))
     
-    '''
-    dict_for_update_R = copy.deepcopy(dict_for_update_acc)
-    # Get the optimal activation function
-    if EDL_USED == 0:
-        dict_for_update_R['acti_fun'] = 'softmax'
-    else:
-        # Get from hyperparameter study
-        core_path = f'study/ecnn{EDL_USED}/sb{sb_n}'
-        study_path = "sqlite:///" + core_path + f"/t{test_trial}.db"
-        loaded_study = optuna.load_study(
-            study_name="STUDY", storage=study_path)
-        temp_best_trial = loaded_study.best_trial
-        dict_for_update_R['acti_fun'] = temp_best_trial.params['evi_fun']
 
-    print(dict_for_update_R)
-    eng.update_result_R(dict_for_update_R)
-    '''
+    for day_n in cfg.DATA_CONFIG.day_list:
+        for time_n in cfg.DATA_CONFIG.time_list:
+            for trial_n in trial_list:
+                temp_dict = {}
+                X_torch, Y_numpy = pre.load_data_test(cfg.DATA_PATH, cfg.DATA_CONFIG.sb_n, day_n, time_n, trial_n, tcn_used=TCN_USED)
+                outputs = model(X_torch.to(DEVICE)).detach().cpu()
+                # get results
+                eng = utils.EngineTest(outputs, Y_numpy)
+                predict = eng.get_pred_labels()
+                acti_fun = cfg.HP.evi_fun if EDL_USED else 'softmax'
+                scores = eng.get_scores(acti_fun, EDL_USED)
+                temp_dict['actual'] = Y_numpy
+                temp_dict['predict'] = predict
+                temp_dict.update(scores)
+                df = pd.DataFrame(temp_dict)
+                filename = cfg.RESULT_PATH + f'd{day_n}_t{time_n}_T{trial_n}'
+                df.to_csv(filename, index=True, index_label=cfg.index)
     return
 
 
 if __name__ == "__main__":
 
-    params = {'edl_used': EDL_USED, 'tcn_used': TCN_USED, 'data_path': DATA_PATH}
-    # test temp
-    params['sb_n'] = 1
-    #params['day_n'] = 1
-    #params['time_n'] = 1
-    for day_n in [1, 2, 3, 4, 5]: # later
-        params['day_n'] = day_n
-        for time_n in [1, 2]: # later
-            params['time_n'] = time_n
-            test(params)
+    # Load config file from hpo search
+    with open("hpo_search.yaml", 'r') as f:
+        cfg = edict(yaml.load(f, Loader=yaml.SafeLoader))
+        
+    # Load determined optimal hyperparameters
+    study_dir = f'etcn{EDL_USED}' if TCN_USED else f'ecnn{EDL_USED}'
+    study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
+    with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
+        hp = yaml.load(f, Loader=yaml.SafeLoader)
     
+    cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
+    cfg.best_loss = hp[0]['best_loss']
+    cfg.HP = {}
+    for key, item in hp[1].items():
+        cfg.HP[key] = item
 
-    '''
-    for sb_n in range(1, 2): # later
-        params['sb_n'] = sb_n
-        model_name = f'models/etcn{EDL_USED}/' if TCN_USED else f'models/ecnn{EDL_USED}/' # later
-        params['saved_model'] = model_name
-        for day_n in [2, 3, 4, 5]: # later
-            params['day_n'] = day_n
-            for time_n in [1, 2]: # later
-                params['time_n'] = time_n
-                test(params)
-                print(f'Testing done. sb{sb_n}-temp')
-    '''
+    cfg.DATA_CONFIG.day_list = [1, 2, 3, 4, 5]
+    #cfg.colunmns = ['sb', 'model', 'day', 'time', 'trial', 'window', 'actual', 'predict', 'u_entropy', 'u_nnmp', 'u_vac', 'u_diss', 'u_overall']
+    #cfg.colunmns = ['actual', 'predict', 'u_entropy', 'u_nnmp', 'u_vac', 'u_diss', 'u_overall']
+    cfg.index = 'window'
+    
+    cfg.RESULT_PATH = os.getcwd() + f'/results/sb{cfg.DATA_CONFIG.sb_n}'
+    test(cfg)

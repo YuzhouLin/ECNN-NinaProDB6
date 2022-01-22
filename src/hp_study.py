@@ -27,10 +27,10 @@ GLOBAL_BEST_LOSS = np.inf
 
 
 def run_training(fold, cfg):
-    train_trail_list = list(set(range(1,cfg.DATA_CONFIG.trial_n+1))-set(cfg.CV.valid_trial_list[fold]))
+    train_trial_list = list(set(range(1,cfg.DATA_CONFIG.trial_n+1))-set(cfg.CV.valid_trial_list[fold]))
     
     # load_data
-    train_loader = pre.load_data(cfg.DATA_PATH, cfg.DATA_CONFIG.sb_n, cfg.DATA_CONFIG.day_list, cfg.DATA_CONFIG.time_list, train_trail_list, tcn_used=TCN_USED, batch_size=cfg.HP.batch_size, shuffle=cfg.DATA_LOADER.shuffle, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
+    train_loader = pre.load_data(cfg.DATA_PATH, cfg.DATA_CONFIG.sb_n, cfg.DATA_CONFIG.day_list, cfg.DATA_CONFIG.time_list, train_trial_list, tcn_used=TCN_USED, batch_size=cfg.HP.batch_size, shuffle=cfg.DATA_LOADER.shuffle, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
     
     valid_loader = pre.load_data(cfg.DATA_PATH, cfg.DATA_CONFIG.sb_n, cfg.DATA_CONFIG.day_list, cfg.DATA_CONFIG.time_list, cfg.CV.valid_trial_list[fold], tcn_used=TCN_USED, batch_size=cfg.HP.batch_size, shuffle=cfg.DATA_LOADER.shuffle, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
     

@@ -98,10 +98,19 @@ class EngineTest:
                 eval('pro.' + acti_fun + '_evidence(self.outputs).numpy()')
         return output_results  # numpy array
 
+    def get_pred_labels(self):  # prediction labels
+        preds = self.outputs.argmax(dim=1, keepdim=True).numpy()
+        return preds
+    
     def get_pred_results(self):  # prediction results; right or wrong
         preds = self.outputs.argmax(dim=1, keepdim=True).numpy()
         pred_results = preds == self.targets
         return pred_results
+
+    def get_scores(self,acti_fun,edl_used)    #  Calculate the scores
+        output_results = self.get_output_results(acti_fun)
+        scores = pro.cal_scores(output_results, edl_used)
+        return scores
 
     def update_result_acc(self, params):
         # pred: prediction Results (not labels)

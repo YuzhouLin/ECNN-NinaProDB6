@@ -27,7 +27,7 @@ DEVICE = pre.try_gpu()
 # check if this is the most case, if so, train 1 epoch or few epochs instead
 
 
-def retrain(params):
+def retrain(cfg):
     # load_data
     train_trail_list = list(range(1,cfg.DATA_CONFIG.trial_n+1))
 
