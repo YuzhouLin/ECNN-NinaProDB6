@@ -7,7 +7,6 @@ import pandas as pd
 import os
 import yaml
 from easydict import EasyDict as edict
-import pdb
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
