@@ -42,7 +42,7 @@ def run_training(fold, cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=5, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     model.to(DEVICE)
@@ -110,17 +110,22 @@ def run_training(fold, cfg):
 
 
 def objective(trial, cfg):
-    cfg.HP={} # hyperparams
+    # cfg.HP={} # hyperparams
     # Update the params for tuning with cross validation
     #with open("hpo_search.yaml", 'r') as f:
     #    hyo_search = yaml.load(f, Loader=yaml.SafeLoader)    
-    
+    #trial.set_user_attr("batch_size", 256)
+    #if TCN_USED:
+    #    trial.set_user_attr("kernel_size", 5)
     for key, item in cfg.HP_SEARCH[f'EDL{EDL_USED}'].items():
         cfg.HP[key] =  eval(item) # Example of an item: trial.suggest_int("kernel_size", 2, 6)
-    if TCN_USED:
-        for key, item in cfg.HP_SEARCH['TCN'].items():
-            cfg.HP[key] =  eval(item)
-
+    #if TCN_USED:
+    #    for key, item in cfg.HP_SEARCH['TCN'].items():
+    #        cfg.HP[key] =  eval(item)
+    #cfg.HP['batch_size'] = 256
+    #if TCN_USED:
+    #    cfg.HP['kernel_size'] = 5
+    
     all_losses = []
     for fold_n in range(len(cfg.CV.valid_trial_list)):
         temp_loss = run_training(fold_n, cfg)

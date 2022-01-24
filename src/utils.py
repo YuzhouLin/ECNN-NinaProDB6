@@ -368,8 +368,22 @@ class TCN(nn.Module):
         #self._fc_prelu1 = nn.PReLU(5120)
         #self._fc_dropout1 = nn.Dropout(dropout)
         #self._output = nn.Linear(5120, output_size)
+        self._fc1_batch_norm = nn.BatchNorm1d(5120)
+        self._fc1_prelu = nn.PReLU(5120)
+        self._fc1_dropout = nn.Dropout(dropout)
+
+
         self._fc2 = nn.Linear(5120, 1024)
+        self._fc2_batch_norm = nn.BatchNorm1d(1024)
+        self._fc2_prelu = nn.PReLU(1024)
+        self._fc2_dropout = nn.Dropout(dropout)
+
+
         self._fc3 = nn.Linear(1024, 256)
+        self._fc3_batch_norm = nn.BatchNorm1d(256)
+        self._fc3_prelu = nn.PReLU(256)
+        self._fc3_dropout = nn.Dropout(dropout)
+
         self._output = nn.Linear(256, output_size)
         #print("Number Parameters: ", self.get_n_params())
         self.initialize_weights()
@@ -391,9 +405,17 @@ class TCN(nn.Module):
         temporal_features1 = self._tcn1(self._batch_norm0(inputs))  # input should have dimension (N, C, L)
         #o = self.linear(y1[:, :, -1])
         
-        fc1 = self._fc1(temporal_features1.view(-1,64*400))
-        fc2 = self._fc2(fc1)
-        fc3 = self._fc3(fc2)
+        #fc1 = self._fc1(temporal_features1.view(-1,64*400))
+        #fc2 = self._fc2(fc1)
+        #fc3 = self._fc3(fc2)
+
+        fc1 = self._fc1_dropout(
+            self._fc1_prelu(self._fc1_batch_norm(self._fc1(temporal_features1.view(-1,64*400)))))
+        fc2 = self._fc2_dropout(
+            self._fc2_prelu(self._fc2_batch_norm(self._fc2(fc1))))
+        fc3 = self._fc3_dropout(
+            self._fc3_prelu(self._fc3_batch_norm(self._fc3(fc2))))
+        output = self._output(fc3)
 
         #fc1 = self._fc_dropout1(
         #    self._fc_prelu1(self._fc_batch_norm1(self._fc1(temporal_features1.view(-1,64*400)))))
