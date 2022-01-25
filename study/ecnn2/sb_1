@@ -1,7 +1,5 @@
-- best_loss: 0.5258964772400183
-- annealing_step: 50
-  batch_size: 384
-  dropout_rate: 0.11945700713604213
+- best_loss: 0.5367693017731916
+- annealing_step: 55
+  dropout_rate: 0.26389249701371514
   evi_fun: softplus
-  lr: 0.001010370369669638
-  optimizer: RMSprop
+  lr: 0.000598905442223205
