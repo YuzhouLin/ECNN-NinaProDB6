@@ -34,7 +34,7 @@ def prepare_data(data_params):
                 for k in data_params['trial_list']:
                     X = []
                     Y = []
-                    temp_file = DATA_PATH + f'/Processed/S{sb_n}_D{day_n}_T{time_n}_t{k}.pkl'
+                    temp_file = DATA_PATH + f'{data_params["folder"]}S{sb_n}_D{day_n}_T{time_n}_t{k}.pkl'
                     if os.path.isfile(temp_file):
                         continue
                     # S:subject; D: day; T: time; t: trial
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     data_params['fs'] = 2000 # sampling frequency (Hz)
     data_params['ws'] = 200 # 200 ms 
     data_params['ratio_non_overlap'] = 0.1
+    data_params['folder'] = '/Processed/'
 
     # sliding window length: wl (Unit: samples)
     # example:

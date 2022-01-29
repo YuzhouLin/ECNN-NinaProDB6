@@ -363,7 +363,9 @@ class TCN(nn.Module):
         self._batch_norm0 = nn.BatchNorm1d(14)
         self._tcn1 = TemporalConvNet(input_size, num_channels, kernel_size=kernel_size, dropout=dropout)
         #self.linear = nn.Linear(num_channels[-1], output_size)
-        self._fc1 = nn.Linear(num_channels[-1]*400, 5120)
+        #self._fc1 = nn.Linear(num_channels[-1]*400, 5120)
+        '''
+        self._fc1 = nn.Linear(num_channels[-1], 5120)
         #self._fc_batch_norm1 = nn.BatchNorm1d(5120)
         #self._fc_prelu1 = nn.PReLU(5120)
         #self._fc_dropout1 = nn.Dropout(dropout)
@@ -385,6 +387,8 @@ class TCN(nn.Module):
         self._fc3_dropout = nn.Dropout(dropout)
 
         self._output = nn.Linear(256, output_size)
+        '''
+        self._output = nn.Linear(num_channels[-1], output_size)
         #print("Number Parameters: ", self.get_n_params())
         self.initialize_weights()
 
@@ -408,16 +412,20 @@ class TCN(nn.Module):
         #fc1 = self._fc1(temporal_features1.view(-1,64*400))
         #fc2 = self._fc2(fc1)
         #fc3 = self._fc3(fc2)
-
+        '''
         fc1 = self._fc1_dropout(
             self._fc1_prelu(self._fc1_batch_norm(self._fc1(temporal_features1.view(-1,64*400)))))
+
         fc2 = self._fc2_dropout(
             self._fc2_prelu(self._fc2_batch_norm(self._fc2(fc1))))
         fc3 = self._fc3_dropout(
             self._fc3_prelu(self._fc3_batch_norm(self._fc3(fc2))))
         output = self._output(fc3)
-
+        '''
         #fc1 = self._fc_dropout1(
         #    self._fc_prelu1(self._fc_batch_norm1(self._fc1(temporal_features1.view(-1,64*400)))))
-        output = self._output(fc3)
+        output = self._output(temporal_features1[:,:,-1])
+        print(np.shape(temporal_features1))
+        print(np.shape(temporal_features1[:,:,-1]))
+        
         return output # F.log_softmax(o, dim=1)

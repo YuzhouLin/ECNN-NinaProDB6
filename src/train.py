@@ -22,7 +22,7 @@ parser.add_argument('--tcn', action='store_true', default=False,
 args = parser.parse_args()
 
 #ID = int(time.time())
-ID = 1
+ID = 'tcn1'
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
@@ -31,9 +31,9 @@ CLASS_N = 8
 CHANNEL_N = 14
 #TRAIN_TRIAL_LIST = list(range(1, 11))
 #VALID_TRIAL_LIST = list(range(11, 13))
-TRAIN_TRIAL_LIST =  [1, 2, 3, 5, 6, 7, 9, 10, 11]
-VALID_TRIAL_LIST = [4, 8, 12]
-DATA_PATH = '/../../hy-tmp/Data6/Processed/'
+TRAIN_TRIAL_LIST =  [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
+VALID_TRIAL_LIST = [6, 12]
+DATA_PATH = '/../../hy-nas/Data6/Processed/'
 
 
 
@@ -219,8 +219,8 @@ if __name__ == "__main__":
     
     if TCN_USED:
         params['channels']=[16,32,64]
-        params['kernel_size'] = 3
-        params['lr'] = 1e-3
+        params['kernel_size'] = 5
+        params['lr'] = 3.187671099086256e-05
     else:
         params['lr'] = 1e-5
 
@@ -248,8 +248,8 @@ if __name__ == "__main__":
         #params['best_loss'] = temp_best_trial.value
         params['optimizer'] = "Adam"
         #params['lr'] = 1e-3
-        params['batch_size'] = 64
-        params['dropout_rate'] = 0.1
+        params['batch_size'] = 256
+        params['dropout_rate'] = 0.7611414535237153
         run_training(params)
 
     #os.system('shutdown')
