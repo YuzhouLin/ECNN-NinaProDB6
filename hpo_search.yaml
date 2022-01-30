@@ -67,15 +67,18 @@ HP_SEARCH:
     dropout_rate:
       trial.suggest_float("dropout_rate", 0.1, 0.9)
 
-  TCN_CHANNELS:
+  #TCN_CHANNELS:
      #[[16, 32, 64], [16, 32, 64, 128], [16, 32, 64, 128, 256]]
-    [16, 32, 64]
-  #TCN: &tcn_base
-  #  kernel_size:
-      #trial.suggest_int("kernel_size", 2, 6)
+  #  [16, 32, 64]
+  TCN: &tcn_base
+    kernel_size:
+      trial.suggest_int("kernel_size", 2, 6)
       #trial.set_user_attr("kernel_size", 5)
-    # tcn_layer_n:
-    #  trial.suggest_int("tcn_layer_n", 3, 5)
+    tcn_layer_n:
+      trial.suggest_int("tcn_layer_n", 3, 6)
+    init_channel:
+      #trial.suggest_int("init_channel_n", 8, )
+      trial.suggest_discrete_uniform("init_channel_n", 2, 64, 2)
 
   EDL1: &edl_base1
     <<: *edl_base0

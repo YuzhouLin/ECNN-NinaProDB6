@@ -42,7 +42,7 @@ def run_training(fold, cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=5, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.TCN_CHANNELS, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     model.to(DEVICE)
@@ -119,9 +119,14 @@ def objective(trial, cfg):
     #    trial.set_user_attr("kernel_size", 5)
     for key, item in cfg.HP_SEARCH[f'EDL{EDL_USED}'].items():
         cfg.HP[key] =  eval(item) # Example of an item: trial.suggest_int("kernel_size", 2, 6)
-    #if TCN_USED:
-    #    for key, item in cfg.HP_SEARCH['TCN'].items():
-    #        cfg.HP[key] =  eval(item)
+    if TCN_USED:
+        for key, item in cfg.HP_SEARCH['TCN'].items():
+            cfg.HP[key] =  eval(item)
+        tcn_channels = [int(cfg.HP['init_channel'])]
+        for i in range(cfg.HP['tcn_layer_n']-1):
+            tcn_channels.append(tcn_channels[-1]*2)
+        cfg.HP['TCN_CHANNELS'] = tcn_channels
+    #print(cfg.HP)
     #cfg.HP['batch_size'] = 256
     #if TCN_USED:
     #    cfg.HP['kernel_size'] = 5

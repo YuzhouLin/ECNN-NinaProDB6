@@ -425,7 +425,7 @@ class TCN(nn.Module):
         #fc1 = self._fc_dropout1(
         #    self._fc_prelu1(self._fc_batch_norm1(self._fc1(temporal_features1.view(-1,64*400)))))
         output = self._output(temporal_features1[:,:,-1])
-        print(np.shape(temporal_features1))
-        print(np.shape(temporal_features1[:,:,-1]))
+        # print(np.shape(temporal_features1)) # [256, 64, 400]
+        # print(np.shape(temporal_features1[:,:,-1])) # [256, 64]
         
         return output # F.log_softmax(o, dim=1)

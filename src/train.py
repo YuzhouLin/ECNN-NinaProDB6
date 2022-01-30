@@ -22,7 +22,7 @@ parser.add_argument('--tcn', action='store_true', default=False,
 args = parser.parse_args()
 
 #ID = int(time.time())
-ID = 'tcn1'
+ID = 'tcn2a'
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
@@ -40,18 +40,10 @@ DATA_PATH = '/../../hy-nas/Data6/Processed/'
 def run_training(params):
     # load_data
     sb_n = params['sb_n']
-    train_params = {'data_path': DATA_PATH, 
-                   'sb_n': sb_n,
-                    'day_list': [1],
-                    'time_list': [1, 2],
-                    'trial_list': TRAIN_TRIAL_LIST,
-                    'batch_size': params['batch_size'],
-                    'tcn_used': TCN_USED
-                   }
-    valid_params = copy.deepcopy(train_params)
-    valid_params['trial_list'] = VALID_TRIAL_LIST
-    train_loader = pre.load_data(train_params)
-    valid_loader = pre.load_data(valid_params)
+
+    train_loader = pre.load_data(DATA_PATH, sb_n, [1], [1, 2], TRAIN_TRIAL_LIST, tcn_used=TCN_USED, batch_size=params['batch_size'], shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
+
+    valid_loader = pre.load_data(DATA_PATH, sb_n, [1], [1, 2], VALID_TRIAL_LIST, tcn_used=TCN_USED, batch_size=params['batch_size'], shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
     
     trainloaders = {
         "train": train_loader,
@@ -218,13 +210,13 @@ if __name__ == "__main__":
 
     
     if TCN_USED:
-        params['channels']=[16,32,64]
+        params['channels']=[16,32,64,128,256]
         params['kernel_size'] = 5
-        params['lr'] = 3.187671099086256e-05
+        params['lr'] = 3.187671099086256e-04
     else:
         params['lr'] = 1e-5
 
-    prefix_path = f'/../../hy-tmp/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-tmp/models/ecnn{EDL_USED}/'
+    prefix_path = f'/../../hy-nas/models/etcn{EDL_USED}/' if TCN_USED else f'/../../hy-nas/models/ecnn{EDL_USED}/'
     
     
     if not os.path.exists(prefix_path):
@@ -249,7 +241,7 @@ if __name__ == "__main__":
         params['optimizer'] = "Adam"
         #params['lr'] = 1e-3
         params['batch_size'] = 256
-        params['dropout_rate'] = 0.7611414535237153
+        params['dropout_rate'] = 0.1 #0.7611414535237153
         run_training(params)
 
     #os.system('shutdown')
