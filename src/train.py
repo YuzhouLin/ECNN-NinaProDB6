@@ -22,7 +22,7 @@ parser.add_argument('--tcn', action='store_true', default=False,
 args = parser.parse_args()
 
 #ID = int(time.time())
-ID = 'tcn2a'
+ID = 'tcn2b'
 EDL_USED = args.edl
 TCN_USED = args.tcn
 DEVICE = pre.try_gpu()
@@ -210,9 +210,9 @@ if __name__ == "__main__":
 
     
     if TCN_USED:
-        params['channels']=[16,32,64,128,256]
+        params['channels']= [32, 64, 128, 256, 512] #[16,32,64,128,256]
         params['kernel_size'] = 5
-        params['lr'] = 3.187671099086256e-04
+        params['lr'] = 3.187671099086256e-05
     else:
         params['lr'] = 1e-5
 

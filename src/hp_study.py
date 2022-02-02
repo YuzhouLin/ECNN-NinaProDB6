@@ -42,7 +42,7 @@ def run_training(fold, cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.TCN_CHANNELS, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     model.to(DEVICE)
@@ -121,11 +121,14 @@ def objective(trial, cfg):
         cfg.HP[key] =  eval(item) # Example of an item: trial.suggest_int("kernel_size", 2, 6)
     if TCN_USED:
         for key, item in cfg.HP_SEARCH['TCN'].items():
-            cfg.HP[key] =  eval(item)
-        tcn_channels = [int(cfg.HP['init_channel'])]
-        for i in range(cfg.HP['tcn_layer_n']-1):
-            tcn_channels.append(tcn_channels[-1]*2)
-        cfg.HP['TCN_CHANNELS'] = tcn_channels
+            if key == 'tcn_channels':
+                cfg.HP[key] = item
+            else:
+                cfg.HP[key] =  eval(item)
+        #tcn_channels = [int(cfg.HP['init_channel'])]
+        #for i in range(cfg.HP['tcn_layer_n']-1):
+        #    tcn_channels.append(tcn_channels[-1]*2)
+        #cfg.HP['TCN_CHANNELS'] = [32, 64, 128, 256, 512]
     #print(cfg.HP)
     #cfg.HP['batch_size'] = 256
     #if TCN_USED:
@@ -179,6 +182,8 @@ def cv_hyperparam_study(sb_n=1):
     trial = study.best_trial
     print("  Value: ", trial.value)
     study_results = [{'best_loss': trial.value}, trial.params]
+    if TCN_USED:
+        study_results[1]['tcn_channels'] = cfg.HP_SEARCH.TCN.tcn_channels
     with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
         document = yaml.dump(study_results, f)
 
