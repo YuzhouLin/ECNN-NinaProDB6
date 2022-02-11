@@ -51,7 +51,8 @@ def test(cfg):
             for trial_n in trial_list:
                 temp_dict = {}
                 X_torch, Y_numpy = pre.load_data_test(cfg.DATA_PATH, cfg.DATA_CONFIG.sb_n, day_n, time_n, trial_n, tcn_used=TCN_USED)
-                outputs = model(X_torch.to(DEVICE)).detach().cpu()
+                with torch.no_grad():
+                    outputs = model(X_torch.to(DEVICE)).detach().cpu()
                 # get results
                 eng = utils.EngineTest(outputs, Y_numpy)
                 predict = eng.get_pred_labels()

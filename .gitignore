@@ -6,4 +6,3 @@ __pycache__/
 models/
 *.pt
 .gitignore
-results/
