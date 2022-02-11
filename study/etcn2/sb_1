@@ -1,8 +1,12 @@
-- best_loss: 0.7787497128310956
-- annealing_step: 40
-  batch_size: 480
-  dropout_rate: 0.43498523762637475
+- best_loss: 0.8291356885755384
+- annealing_step: 45
+  dropout_rate: 0.3344093504723007
   evi_fun: softplus
-  kernel_size: 5
-  lr: 0.0002971546629528969
-  optimizer: Adam
+  kernel_size: 4
+  lr: 0.000429805470608401
+  tcn_channels:
+  - 32
+  - 64
+  - 128
+  - 256
+  - 512

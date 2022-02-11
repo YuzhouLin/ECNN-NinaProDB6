@@ -134,18 +134,20 @@ def objective(trial, cfg):
     #if TCN_USED:
     #    cfg.HP['kernel_size'] = 5
     
-    all_losses = []
-    for fold_n in range(len(cfg.CV.valid_trial_list)):
-        temp_loss = run_training(fold_n, cfg)
-        intermediate_value = temp_loss
-        trial.report(intermediate_value, fold_n)
-        if trial.should_prune():
-            raise optuna.TrialPruned()
-    
-        all_losses.append(temp_loss)
-
-    return np.mean(all_losses)
-    # return temp_loss
+    if cfg.CV.valid_trial_select is None:
+        all_losses = []
+        for fold_n in range(len(cfg.CV.valid_trial_list)):
+            temp_loss = run_training(fold_n, cfg)
+            intermediate_value = temp_loss
+            trial.report(intermediate_value, fold_n)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+        
+            all_losses.append(temp_loss)
+        return np.mean(all_losses)
+    else:
+        temp_loss = run_training(cfg.CV.valid_trial_select, cfg)
+        return temp_loss
 
 
 def cv_hyperparam_study(sb_n=1):
