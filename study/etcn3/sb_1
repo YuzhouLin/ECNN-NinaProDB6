@@ -1,8 +1,12 @@
-- best_loss: 0.6624139396499944
-- batch_size: 128
-  dropout_rate: 0.3228401781610031
+- best_loss: 0.562189295485213
+- dropout_rate: 0.3396528296893869
   evi_fun: relu
-  kernel_size: 3
-  l: 0.010642888991825956
-  lr: 0.00021158029838374274
-  optimizer: Adam
+  kernel_size: 5
+  l: 0.02407912502298322
+  lr: 0.00033650754376028457
+  tcn_channels:
+  - 32
+  - 64
+  - 128
+  - 256
+  - 512
