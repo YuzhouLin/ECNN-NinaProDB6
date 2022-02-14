@@ -36,9 +36,13 @@ def retrain(cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP_SEARCH.TCN_CHANNELS, kernel_size=5, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
+    
+    saved_model_path = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
+    checkpoint = torch.load(saved_model_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.to(DEVICE)
     optimizer = getattr(
         torch.optim,cfg.HP.optimizer)(model.parameters(), lr=cfg.HP.lr)
@@ -53,17 +57,17 @@ def retrain(cfg):
 
 
     t0 = time.time()
-    for epoch in range(1, cfg.TRAINING.epochs + 1): 
+    for epoch in range(1, cfg.RETRAINING.epochs + 1): 
         # if 'annealing_step' in loss_params:
         if EDL_USED == 2:
             loss_params['epoch_num'] = epoch
 
         train_loss = eng.re_train(train_loader, loss_params)
         print(
-            f"epoch:{epoch}, train_loss:{train_loss}, best_loss_from_hpo:{best_loss}")
+            f"epoch:{epoch}, train_loss:{train_loss}")
 
-        if train_loss < cfg.best_loss:
-            break
+        #if train_loss < cfg.best_loss:
+        #    break
     t1 = time.time() - t0
     print('Training completed in {} seconds'.format(t1))
 
@@ -72,8 +76,7 @@ def retrain(cfg):
     'train_loss': train_loss,
     'train_time': t1,
     'epoch': epoch
-    }, cfg.model_path+f'/retrained_sb{cfg.DATA_CONFIG.sb_n}.pt') # modify it later
-
+    }, cfg.model_path+f'/{cfg.RETRAINING.model_name}{cfg.RETRAINING.epochs}_sb{cfg.DATA_CONFIG.sb_n}.pt') # modify it later
     return
 
 
@@ -89,11 +92,11 @@ if __name__ == "__main__":
     with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
         hp = yaml.load(f, Loader=yaml.SafeLoader)
     
-    cfg['best_loss'] = hp[0]['best_loss']
+    #cfg['best_loss'] = hp[0]['best_loss']
     cfg.HP = {}
     for key, item in hp[1].items():
         cfg.HP[key] = item
 
-    cfg.TRAINING.epochs = 10
+    #cfg.TRAINING.epochs = 10
     # retraining and save the models
     retrain(cfg)

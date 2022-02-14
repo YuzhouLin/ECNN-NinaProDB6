@@ -105,7 +105,7 @@ def run_training(fold, cfg):
             'valid_loss': valid_loss, # best_loss
             'train_acc:': train_acc,
             'valid_acc': valid_acc
-            }, cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt') # modify it later
+            }, cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt') # modify it later
     return best_loss
 
 

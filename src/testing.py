@@ -26,15 +26,14 @@ DEVICE = pre.try_gpu()
 def test(cfg):
 
     # Load trained model
-    saved_model_path = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
-    checkpoint = torch.load(saved_model_path)
+    checkpoint = torch.load(cfg.test_model)
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
         model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
-        
+
     #model.load_state_dict(
     #    torch.load(checkpoint['model_state_dict'], map_location=DEVICE))
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -61,7 +60,7 @@ def test(cfg):
                 temp_dict['actual'] = Y_numpy
                 temp_dict['predict'] = np.squeeze(predict)
                 temp_dict.update(scores)
-                df = pd.DataFrame(temp_dict, index =  np.arange(1,len(Y_numpy)+1,1))
+                df = pd.DataFrame(temp_dict, index=np.arange(1,len(Y_numpy)+1,1))
                 filename = cfg.RESULT_PATH + f'd{day_n}_t{time_n}_T{trial_n}.csv'
                 df.to_csv(filename, index=True, index_label=cfg.index)
     return
@@ -97,4 +96,9 @@ if __name__ == "__main__":
     cfg.index = 'window'
     
     cfg.RESULT_PATH = cfg.RESULT_PATH + f'/sb{cfg.DATA_CONFIG.sb_n}'
+    
+    #cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
+    
+    cfg.test_model = cfg.model_path+f'/{cfg.RETRAINING.model_name}{cfg.RETRAINING.epochs}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test from the retrained model with the model initialisation using the best model saved during HPO
+
     test(cfg)

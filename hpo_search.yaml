@@ -8,7 +8,8 @@ STUDY_PATH:
   /study/
 
 RESULT_PATH:
-  /results/
+  #/results/
+  /results1/
   # /../../hy-tmp/study/
 
 CLASS_NAMES: 
@@ -40,6 +41,11 @@ DATA_LOADER:
 TRAINING:
   epochs: 100
   early_stopping_iter: 10
+  model_name: best_hpo
+
+RETRAINING:
+  epochs: 10
+  model_name: retrained
   
 HPO_STUDY:
   sampler:
