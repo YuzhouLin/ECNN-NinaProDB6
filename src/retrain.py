@@ -40,7 +40,7 @@ def retrain(cfg):
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     
-    saved_model_path = cfg.model_path+f'/best_hpo_sb{cfg.DATA_CONFIG.sb_n}.pt'
+    saved_model_path = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt'
     checkpoint = torch.load(saved_model_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(DEVICE)
