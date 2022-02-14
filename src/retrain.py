@@ -93,10 +93,11 @@ if __name__ == "__main__":
         hp = yaml.load(f, Loader=yaml.SafeLoader)
     
     #cfg['best_loss'] = hp[0]['best_loss']
-    cfg.HP = {}
+    #cfg.HP = {}
     for key, item in hp[1].items():
         cfg.HP[key] = item
 
+    cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
     #cfg.TRAINING.epochs = 10
     # retraining and save the models
     retrain(cfg)

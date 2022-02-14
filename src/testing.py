@@ -61,7 +61,7 @@ def test(cfg):
                 temp_dict['predict'] = np.squeeze(predict)
                 temp_dict.update(scores)
                 df = pd.DataFrame(temp_dict, index=np.arange(1,len(Y_numpy)+1,1))
-                filename = cfg.RESULT_PATH + f'd{day_n}_t{time_n}_T{trial_n}.csv'
+                filename = cfg.result_path+ f'd{day_n}_t{time_n}_T{trial_n}.csv'
                 df.to_csv(filename, index=True, index_label=cfg.index)
     return
 
@@ -85,9 +85,9 @@ if __name__ == "__main__":
         cfg.HP[key] = item
 
     # Check results saved path
-    cfg.RESULT_PATH = os.getcwd() + cfg.RESULT_PATH + study_dir
-    if not os.path.exists(cfg.RESULT_PATH):
-        os.makedirs(cfg.RESULT_PATH)
+    cfg.result_path = os.getcwd() + cfg.RESULT_PATH + study_dir
+    if not os.path.exists(cfg.result_path):
+        os.makedirs(cfg.result_path)
 
 
     cfg.DATA_CONFIG.day_list = [1, 2, 3, 4, 5]
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     #cfg.colunmns = ['actual', 'predict', 'u_entropy', 'u_nnmp', 'u_vac', 'u_diss', 'u_overall']
     cfg.index = 'window'
     
-    cfg.RESULT_PATH = cfg.RESULT_PATH + f'/sb{cfg.DATA_CONFIG.sb_n}'
+    cfg.result_path = cfg.result_path + f'/sb{cfg.DATA_CONFIG.sb_n}'
     
     #cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
     

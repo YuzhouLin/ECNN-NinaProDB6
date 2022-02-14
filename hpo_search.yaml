@@ -44,7 +44,7 @@ TRAINING:
   model_name: best_hpo
 
 RETRAINING:
-  epochs: 10
+  epochs: 1
   model_name: retrained
   
 HPO_STUDY:

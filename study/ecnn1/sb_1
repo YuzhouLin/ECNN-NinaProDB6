@@ -1,6 +1,5 @@
 - best_loss: 0.36172431825022944
-- batch_size: 480
-  dropout_rate: 0.6402976535039945
+- dropout_rate: 0.6402976535039945
   evi_fun: relu
   lr: 0.0007130549429992605
   optimizer: Adam
