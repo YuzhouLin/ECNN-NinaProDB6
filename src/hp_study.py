@@ -186,8 +186,9 @@ def cv_hyperparam_study(sb_n=1):
     study_results = [{'best_loss': trial.value}, trial.params]
     if TCN_USED:
         study_results[1]['tcn_channels'] = cfg.HP_SEARCH.TCN.tcn_channels
-    with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
-        document = yaml.dump(study_results, f)
+    
+    #with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
+    #    document = yaml.dump(study_results, f)
 
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))

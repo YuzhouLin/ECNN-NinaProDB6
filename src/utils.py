@@ -242,7 +242,7 @@ class Model(nn.Module):
         self._output = nn.Linear(256, number_of_class)
         self.initialize_weights()
 
-        #print("Number Parameters: ", self.get_n_params())
+        print("Number Parameters: ", self.get_n_params())
 
     def get_n_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -391,7 +391,13 @@ class TCN(nn.Module):
         self._output = nn.Linear(num_channels[-1], output_size)
         #print("Number Parameters: ", self.get_n_params())
         self.initialize_weights()
+        print("Number Parameters: ", self.get_n_params())
 
+    def get_n_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        number_params = sum([np.prod(p.size()) for p in model_parameters])
+        return number_params
+    
     def initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):

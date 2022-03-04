@@ -1,18 +1,39 @@
 import torch
 import utils
-from src import helps_pre as pre
-import optuna
+#import optuna
 import pandas as pd
+import yaml
+import os
+from easydict import EasyDict as edict
 
-
-DEVICE = pre.get_device()
-EPOCHS = 100
-TRIAL_LIST = list(range(1, 7))
-DATA_PATH = '/data/NinaproDB5/raw/'
+#DEVICE = pre.get_device()
+#EPOCHS = 100
+#TRIAL_LIST = list(range(1, 7))
+#DATA_PATH = '/data/NinaproDB5/raw/'
 
 
 if __name__ == "__main__":
 
+    with open("hpo_search.yaml", 'r') as f:
+        cfg = edict(yaml.load(f, Loader=yaml.SafeLoader))
+    EDL_USED=0
+    TCN_USED=True
+    # Load determined optimal hyperparameters
+    study_dir = f'etcn{EDL_USED}' if TCN_USED else f'ecnn{EDL_USED}'
+    study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
+    with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
+        hp = yaml.load(f, Loader=yaml.SafeLoader)
+    
+    #cfg['best_loss'] = hp[0]['best_loss']
+    #cfg.HP = {}
+    for key, item in hp[1].items():
+        cfg.HP[key] = item
+
+    n_class = len(cfg.CLASS_NAMES)
+    if TCN_USED:
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+    else:
+        model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     '''
     for test_trial in range(1, 7):
         for sb_n in range(1, 11):
@@ -26,6 +47,7 @@ if __name__ == "__main__":
                 print(key, value)
                 break
     '''
+    '''
     rec_r1 = pd.read_csv('results/cv/accuracy.csv')
     rec_r2 = pd.read_csv('results/cv/accuracy_temp.csv') 
     rec_r = pd.concat([rec_r1, rec_r2], ignore_index=True)
@@ -38,7 +60,7 @@ if __name__ == "__main__":
     mis_r = pd.concat([mis_r1, mis_r2], ignore_index=True)
     print(mis_r)
     mis_r.to_csv('results/cv/reliability.csv', index=False)
-
+    '''
     '''
     rec_r = pd.read_csv('results/cv/accuracy.csv')
     
