@@ -150,12 +150,13 @@ def objective(trial, cfg):
         return temp_loss
 
 
-def cv_hyperparam_study(sb_n=1):
+def cv_hyperparam_study():
 
     # Load config file
     with open("hpo_search.yaml", 'r') as f:
         cfg = edict(yaml.load(f, Loader=yaml.SafeLoader))
-        
+    
+    sb_n=cfg.DATA_CONFIG.sb_n
     # Check study path
     study_dir = f'etcn{EDL_USED}' if TCN_USED else f'ecnn{EDL_USED}'
     study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
@@ -174,7 +175,7 @@ def cv_hyperparam_study(sb_n=1):
         sampler=sampler,  # parametrs sampling strategy
         pruner=eval(cfg.HPO_STUDY.pruner),
         study_name=study_dir+f'_sb{sb_n}',
-        storage=f"sqlite:///{study_dir}_sb{sb_n}.db", 
+        storage=f"sqlite:///study/{study_dir}/sb{sb_n}.db", 
         load_if_exists=True
     )
     study.optimize(lambda trial: objective(trial, cfg), n_trials=cfg.HPO_STUDY.trial_n)
@@ -187,8 +188,9 @@ def cv_hyperparam_study(sb_n=1):
     if TCN_USED:
         study_results[1]['tcn_channels'] = cfg.HP_SEARCH.TCN.tcn_channels
     
-    #with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
-    #    document = yaml.dump(study_results, f)
+    # Write (Save) HP to a yaml file 
+    with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
+        yaml.dump(study_results, f)
 
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))

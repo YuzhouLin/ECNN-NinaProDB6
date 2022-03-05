@@ -8,8 +8,8 @@ STUDY_PATH:
   /study/
 
 RESULT_PATH:
-  #/results/
-  /results1/
+  /results/
+  #/results1/
   # /../../hy-tmp/study/
 
 CLASS_NAMES: 
@@ -29,7 +29,7 @@ CV:
     - [4, 10]
     - [5, 11]
     - [6, 12]
-  valid_trial_select: None # 4 # if None, use CV
+  valid_trial_select:  # 4 # if None, use CV
 
 
 DATA_LOADER:

@@ -62,7 +62,7 @@ if __name__ == "__main__":
     data_params = {}
     data_params['data_num'] = 6 # dataset number
     data_params['day_list'] = list(range(1,6)) # day list, 5 days
-    data_params['sb_list'] = [1] # subject list; 
+    data_params['sb_list'] = [2] # subject list; 
     # data_params['sb_list'] = list(range(1, 11)) change it later
     data_params['class_list'] = [0, 1, 3, 4, 6, 9, 10, 11] # class list
     data_params['channel_list'] = list(range(1,16)) # channel list
