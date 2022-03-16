@@ -24,18 +24,21 @@ DATA_CONFIG:
 
 CV:
   valid_trial_list:
-    - [2, 8]
-    - [3, 9]
-    - [4, 10]
-    - [5, 11]
-    - [6, 12]
+    #- [2, 8]
+    #- [3, 9]
+    #- [4, 10]
+    #- [5, 11]
+    #- [6, 12]
+    - [1, 4, 7, 10]
+    - [2, 5, 8, 11]
+    - [3, 6, 9, 12]
   valid_trial_select:  # 4 # if None, use CV
 
 
 DATA_LOADER:
   shuffle: True
   drop_last: True
-  num_workers: 2
+  num_workers: 4
   pin_memory: True
 
 TRAINING:
