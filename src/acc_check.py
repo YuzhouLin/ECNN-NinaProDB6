@@ -4,7 +4,7 @@ import os
 
 
 ## Functions for calculating accuracy
-def get_acc(model, sb, valid_trials, read_folder="/results"):
+def get_acc(model, sb, read_folder="/results"):
     
     day_n_list = []
     time_n_list = []
@@ -18,8 +18,8 @@ def get_acc(model, sb, valid_trials, read_folder="/results"):
                 day_n_list.append(day_n)
                 time_n_list.append('AM') if t_n == 1 else time_n_list.append('PM')
                 #time_n_list.append(t_n)
-                if day_n == 1 and T_n not in valid_trials:
-                    continue
+                #if day_n == 1 and T_n not in valid_trials:
+                #    continue
                 trial_n_list.append(T_n)
                 acc_list.append(np.sum(tmp_R['actual'] == tmp_R['predict'])/len(tmp_R['predict']))
     
@@ -41,8 +41,8 @@ def get_acc(model, sb, valid_trials, read_folder="/results"):
 if __name__ == "__main__":
     
     folder = "/results"
-    filename = './analysis/acc_report_temp.csv'
-    models = ['ecnn0']
+    filename = './analysis/acc_report_etcn0.csv'
+    models = ['ecnn0', 'ecnn1']
     sb_n = 2
     #models = ['ecnn0', 'ecnn1', 'ecnn2', 'ecnn3', 'etcn0', 'etcn1', 'etcn2', 'etcn3']
 
