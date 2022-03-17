@@ -42,7 +42,7 @@ DATA_LOADER:
   pin_memory: True
 
 TRAINING:
-  epochs: 100
+  epochs: 200
   early_stopping_iter: 10
   model_name: best_hpo
 
@@ -79,11 +79,16 @@ HP_SEARCH:
       trial.suggest_float("dropout_rate", 0.1, 0.5)
 
   TCN: &tcn_base
-    kernel_size:
-      trial.suggest_int("kernel_size", 2, 5)
+    #kernel_size:
+    #  trial.suggest_int("kernel_size", 2, 5)
       #trial.set_user_attr("kernel_size", 5)
-    tcn_channels:
-      [32, 64, 128, 256, 512]
+    layer_n:
+      trial.suggest_int("layer_n", 3, 8)
+    kernel_list:
+      [51, 26, 13, 8, 4, 2]
+  
+    #tcn_channels:
+    #  [32, 64, 128, 256, 512]
     #tcn_layer_n:
     #  trial.suggest_int("tcn_layer_n", 3, 6)
     #init_channel:

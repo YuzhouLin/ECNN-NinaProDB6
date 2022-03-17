@@ -30,7 +30,7 @@ def test(cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.layer_n*[cfg.DATA_CONFIG.channel_n], kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
 
@@ -83,7 +83,9 @@ if __name__ == "__main__":
     #cfg.HP = {}
     for key, item in hp[1].items():
         cfg.HP[key] = item
-
+    
+    if TCN_USED:
+        cfg.HP['kernel_size'] = cfg.HP_SEARCH.TCN.kernel_list[cfg.HP.layer_n-3]
     # Check results saved path
     cfg.result_path = os.getcwd() + cfg.RESULT_PATH + study_dir
     if not os.path.exists(cfg.result_path):
@@ -100,5 +102,4 @@ if __name__ == "__main__":
     cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
     
     #cfg.test_model = cfg.model_path+f'/{cfg.RETRAINING.model_name}{cfg.RETRAINING.epochs}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test from the retrained model with the model initialisation using the best model saved during HPO
-
-    test(cfg)
+    test(cfg)    

@@ -7,6 +7,5 @@ models/
 *.pt
 .gitignore
 analysis/
-results/
 data_analysis/
 *.ipynb

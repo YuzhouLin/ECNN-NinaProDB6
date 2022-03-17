@@ -42,7 +42,8 @@ def run_training(fold, cfg):
     n_class = len(cfg.CLASS_NAMES)
     # Load Model
     if TCN_USED:
-        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        #model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.tcn_channels, kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.layer_n*[cfg.DATA_CONFIG.channel_n], kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
     model.to(DEVICE)
@@ -93,6 +94,7 @@ def run_training(fold, cfg):
             '''
         else:
             early_stopping_counter += 1
+            early_stopping_counter += 1
         if early_stopping_counter > early_stopping_iter:
             break
     
@@ -120,11 +122,14 @@ def objective(trial, cfg):
     for key, item in cfg.HP_SEARCH[f'EDL{EDL_USED}'].items():
         cfg.HP[key] =  eval(item) # Example of an item: trial.suggest_int("kernel_size", 2, 6)
     if TCN_USED:
-        for key, item in cfg.HP_SEARCH['TCN'].items():
-            if key == 'tcn_channels':
-                cfg.HP[key] = item
-            else:
-                cfg.HP[key] =  eval(item)
+        cfg.HP['layer_n'] = eval(cfg.HP_SEARCH['TCN'].layer_n)
+        cfg.HP['kernel_size'] = cfg.HP_SEARCH['TCN'].kernel_list[cfg.HP['layer_n']-3]
+        #for key, item in cfg.HP_SEARCH['TCN'].items():
+        #    if key == 'tcn_channels':
+        #        cfg.HP[key] = item
+        #    else:
+        #        cfg.HP[key] =  eval(item)
+        
         #tcn_channels = [int(cfg.HP['init_channel'])]
         #for i in range(cfg.HP['tcn_layer_n']-1):
         #    tcn_channels.append(tcn_channels[-1]*2)
@@ -185,15 +190,15 @@ def cv_hyperparam_study():
     trial = study.best_trial
     print("  Value: ", trial.value)
     study_results = [{'best_loss': trial.value}, trial.params]
-    if TCN_USED:
-        study_results[1]['tcn_channels'] = cfg.HP_SEARCH.TCN.tcn_channels
+    #if TCN_USED:
+    #    study_results[1]['tcn_channels'] = cfg.HP_SEARCH.TCN.tcn_channels
     
     # Write (Save) HP to a yaml file 
     with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
         yaml.dump(study_results, f)
-
-    for key, value in trial.params.items():
-        print("    {}: {}".format(key, value))
+                     
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
     return
 
 

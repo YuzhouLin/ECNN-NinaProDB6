@@ -54,7 +54,7 @@ def load_data(data_path, sb_n, day_list, time_list, trial_list, **kwargs):
 
     if arr_default['batch_size'] > 1:  # For training and validation
         data_loader = torch.utils.data.DataLoader(
-            data, batch_size=arr_default['batch_size'], shuffle=arr_default['shuffle'], drop_last=arr_default['drop_last'], num_workers=arr_default['num_workers'], pin_memory=arr_default['pin_memory'])
+            data, batch_size=arr_default['batch_size'], shuffle=arr_default['shuffle'], drop_last=arr_default['drop_last'], num_workers=arr_default['num_workers'], pin_memory=arr_default['pin_memory'])#, prefetch_factor=128, persistent_workers=True)
     elif arr_default['batch_size'] == 1:  # For testing
         # default DataLoader: batch_size = 1, shuffle = False, drop_last =False
         data_loader = torch.utils.data.DataLoader(data)
