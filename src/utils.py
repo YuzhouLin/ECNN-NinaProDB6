@@ -32,59 +32,84 @@ class EngineTrain:
     @staticmethod
     def criterion(outputs, targets, loss_params):  # loss function
         if loss_params['edl_used'] == 0:
-            loss_fun = nn.CrossEntropyLoss()
+            loss_fun = nn.CrossEntropyLoss(reduction='none')
             loss = loss_fun(outputs, targets)
         else:
             loss = pro.edl_mse_loss(outputs, targets, loss_params)
+            loss=torch.squeeze(loss)
         return loss
 
     def train(self, data_loaders, loss_params):
         final_loss = {}
-        final_acc = {}
-        results = {'train': [], 'val': []}
+        #final_acc = {}
+        #results = {'train': [], 'val': []}
+        results_pred = {'train': [], 'val': []}
+        results_true = {'train': [], 'val': []}
         for phase in ['train', 'val']:
             train_flag = phase == 'train'
             self.model.train() if train_flag else self.model.eval()
             final_loss[phase] = 0.0
             data_n = 0.0
-            for _, (inputs, targets) in enumerate(data_loaders[phase]):
+            #for _, (inputs, targets) in enumerate(data_loaders[phase]):
+            for _, (inputs, targets, weights) in enumerate(data_loaders[phase]):
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)  # (batch_size,)
+                weights = weights.to(self.device)
                 self.optimizer.zero_grad(set_to_none=True)
                 with torch.set_grad_enabled(train_flag):
                     outputs = self.model(inputs)  # (batch_size,class_n)
-                    loss = self.criterion(outputs, targets, loss_params)
+                    loss_all = self.criterion(outputs, targets, loss_params)
+                    #loss_func = nn.CrossEntropyLoss(reduction='none')
+                    #loss_all = loss_func(outputs, targets)
+                    loss = (weights*loss_all).sum()/weights.sum()
                     preds = outputs.argmax(dim=1).detach().cpu().numpy()
                     trues = targets.detach().cpu().numpy()
                     if train_flag:
                         loss.backward()
                         self.optimizer.step()
-                results[phase].extend(preds == trues)
+                results_pred[phase].extend(preds)
+                results_true[phase].extend(trues)
+                #results[phase].extend(preds == trues)
                 final_loss[phase] += loss.item() * inputs.size(0)
                 data_n += inputs.size(0)
             final_loss[phase] = final_loss[phase] / data_n
-            final_acc[phase] = np.sum(results[phase])*1.0/len(results[phase])
-        return final_loss, final_acc
+            #final_acc[phase] = np.sum(results[phase])*1.0/len(results[phase])
+        return final_loss, results_pred, results_true #final_acc
 
     def re_train(self, data_loader, loss_params):
         final_loss = 0.0
         self.model.train()
         data_n = 0.0
-        for _, (inputs, targets) in enumerate(data_loader):
+        results_pred = []
+        results_true = []
+        #for _, (inputs, targets) in enumerate(data_loader):
+        #    inputs = inputs.to(self.device)
+        #    targets = targets.to(self.device)
+        for _, (inputs, targets, weights) in enumerate(data_loader):
             inputs = inputs.to(self.device)
-            targets = targets.to(self.device)
+            targets = targets.to(self.device)  # (batch_size,)
+            weights = weights.to(self.device)
+
             self.optimizer.zero_grad(set_to_none=True)
             with torch.set_grad_enabled(True):
                 outputs = self.model(inputs)
-                loss = self.criterion(outputs, targets, loss_params)
+                #loss = self.criterion(outputs, targets, loss_params)
+                loss_all = self.criterion(outputs, targets, loss_params)
+                loss = (weights*loss_all).sum()/weights.sum()
                 loss.backward()
+                preds = outputs.argmax(dim=1).detach().cpu().numpy()
+                trues = targets.detach().cpu().numpy()
+
                 self.optimizer.step()
                 #loop.set_description(f"Epoch [{loss_params['epoch_num']}/{1000}]")
                 #loop.set_postfix(loss=loss.item())
+            results_pred.extend(preds)
+            results_true.extend(trues)
+
             final_loss += float(loss.item()) * inputs.size(0)
             data_n += inputs.size(0)
         final_loss = final_loss / data_n
-        return final_loss
+        return final_loss, results_pred, results_true
 
 
 class EngineTest:
@@ -101,7 +126,7 @@ class EngineTest:
     def get_pred_labels(self):  # prediction labels
         preds = self.outputs.argmax(dim=1, keepdim=True).numpy()
         return preds
-    
+
     def get_pred_results(self):  # prediction results; right or wrong
         preds = self.outputs.argmax(dim=1, keepdim=True).numpy()
         pred_results = preds == self.targets
@@ -151,7 +176,7 @@ class EngineTest:
     def update_result_R(self, params):
         # pred: prediction Results (not labels)
         # true: Ground truth labels
-        
+
         # load current result file
         filename = 'results/cv/reliability_temp.csv'
         column_names = [*params, 'skew', 'uncertainty', 'AUROC', 'AP', 'nAP']
@@ -182,7 +207,7 @@ class EngineTest:
             temp_dict['AP'] = APs[un_type]
             temp_dict['nAP'] = nAPs[un_type]
             df = df.append([temp_dict])
-        
+
         '''
         #  Update the AP for each un
         for un_type, AP in APs.items():
@@ -238,7 +263,7 @@ class Model(nn.Module):
         self._fc_batch_norm2 = nn.BatchNorm1d(256)
         self._fc_prelu2 = nn.PReLU(256)
         self._fc_dropout2 = nn.Dropout(dropout)
-        
+
         self._output = nn.Linear(256, number_of_class)
         self.initialize_weights()
 
@@ -269,15 +294,15 @@ class Model(nn.Module):
         # print(x.size())
         conv1 = self._dropout1(self._prelu1(self._batch_norm1(self._conv1(self._batch_norm0(x)))))
         #conv1 = self._dropout1(self._prelu1(self._batch_norm1(self._conv1(x))))
-    
+
         # conv1 = self._dropout1(
         # self._prelu1(self._batch_norm1(self._conv1(self._batch_norm0(x)))))
         pool1 = self._pool1(conv1)
-        
+
         conv2 = self._dropout2(
             self._prelu2(self._batch_norm2(self._conv2(pool1))))
         pool2 = self._pool2(conv2)
-        
+
         conv3 = self._dropout3(
             self._prelu3(self._batch_norm3(self._conv3(pool2))))
         pool3 = self._pool3(conv3)
@@ -397,7 +422,7 @@ class TCN(nn.Module):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         number_params = sum([np.prod(p.size()) for p in model_parameters])
         return number_params
-    
+
     def initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -414,7 +439,7 @@ class TCN(nn.Module):
         '''
         temporal_features1 = self._tcn1(self._batch_norm0(inputs))  # input should have dimension (N, C, L)
         #o = self.linear(y1[:, :, -1])
-        
+
         #fc1 = self._fc1(temporal_features1.view(-1,64*400))
         #fc2 = self._fc2(fc1)
         #fc3 = self._fc3(fc2)
@@ -433,5 +458,5 @@ class TCN(nn.Module):
         output = self._output(temporal_features1[:,:,-1])
         # print(np.shape(temporal_features1)) # [256, 64, 400]
         # print(np.shape(temporal_features1[:,:,-1])) # [256, 64]
-        
+
         return output # F.log_softmax(o, dim=1)

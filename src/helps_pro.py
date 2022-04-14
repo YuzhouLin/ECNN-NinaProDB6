@@ -91,8 +91,12 @@ def mse_loss(y, alpha, params):
 def edl_mse_loss(output, target, params):
     evidence = eval(params['evi_fun'] + '_evidence(output)')
     alpha = evidence + 1
-    y = one_hot_embedding(target, params['class_n'])
-    loss = torch.mean(mse_loss(y.float(), alpha, params))
+    #y = one_hot_embedding(target, params['class_n'])
+    #print(target)
+    y = F.one_hot(target, num_classes=params['class_n'])
+    #loss = torch.mean(mse_loss(y.float(), alpha, params))
+    loss=mse_loss(y.float(),alpha,params)
+    #print(loss.size())
     return loss
 
 
