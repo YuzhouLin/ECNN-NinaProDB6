@@ -28,6 +28,9 @@ if __name__ == "__main__":
     with open(f'./data_distill/sb_{sb_n}', 'r') as f:
         clean_label_list = yaml.load(f, Loader=yaml.SafeLoader)
 
+    min_len = 6000 # ignore trials which are less than 3s recording
+    rest_len = 1000 # starts taking rest samples after 0.5s of each grasp 
+    time_list = [1,2]
 
     X_train = []
     Y_train = []
@@ -53,12 +56,12 @@ if __name__ == "__main__":
             for c_n, snr in clean_label_list['d1'][time][f'g{g_n}']:
                 selected_index = np.nonzero(np.logical_and(cycle==c_n, label==class_list[g_n]))[0]
                 samples = emg[selected_index][:,valid_channel]
-                if len(samples) < 8000:
+                if len(samples) < 6000:
                     print(f'warning trial detected on sb{sb_n}, day1, {time}, g{g_n}, t{c_n}')
                     continue
                 segment = seg_emg(samples)
                 #segment = seg_emg(samples[3500:-3500])
-                rest_samples = emg[selected_index[-1]+2000:selected_index[-1]+2000+round(len(samples)/6)][:,valid_channel]
+                rest_samples = emg[selected_index[-1]+1000:selected_index[-1]+1000+round(len(samples)/6)][:,valid_channel]
                 #rest_samples = emg[selected_index[-1]+3500:selected_index[-1]+round(len(samples[3500:-3500])/7)][:,valid_channel]
                 segment_rest = seg_emg(rest_samples)
                 # 1100 = 8000/7, each trial of gesture lasts about 4 seconds
@@ -121,7 +124,7 @@ if __name__ == "__main__":
                         continue
 
                     segment = seg_emg(samples)
-                    rest_samples = emg[selected_index[-1]+2000:selected_index[-1]+2000+round(len(samples)/6)][:,valid_channel]
+                    rest_samples = emg[selected_index[-1]+1000:selected_index[-1]+1000+round(len(samples)/6)][:,valid_channel]
                     #segment = seg_emg(samples[3500:-3500])
                     #rest_samples = emg[selected_index[-1]+3500:selected_index[-1]+round(len(samples[3500:-3500])/7)][:,valid_channel]
 
