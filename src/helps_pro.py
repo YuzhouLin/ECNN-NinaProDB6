@@ -199,6 +199,6 @@ def cal_scores(results, edl_used):
         scores['vacuity'] = cal_vacuity(beliefs)
         scores['dissonance'] = cal_dissonance(beliefs)
         overall = np.concatenate((scores['entropy'], scores['un_prob'], scores['vacuity'], scores['dissonance']), axis=1)
-    
+
     scores['overall'] = np.max(overall, axis=1, keepdims=True)
     return scores

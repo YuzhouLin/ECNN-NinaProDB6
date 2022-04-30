@@ -23,6 +23,72 @@ TCN_USED = args.tcn
 # DEVICE = torch.device('cpu')
 DEVICE = pre.try_gpu()
 
+
+def get_weights(cfg):
+    sb_n = cfg.DATA_CONFIG.sb_n
+    print('Getting weights for sb: ', sb_n)
+    # Load trained model
+    checkpoint = torch.load(cfg.test_model)#, map_location=torch.device('cpu'))
+    n_class = len(cfg.CLASS_NAMES)
+    # Load Model
+    if TCN_USED:
+        model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.layer_n*[cfg.DATA_CONFIG.channel_n], kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
+    else:
+        model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
+
+    #model.load_state_dict(
+    #    torch.load(checkpoint['model_state_dict'], map_location=DEVICE))
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(DEVICE)
+    model.eval()
+
+    train_day_list = list(set(range(1,6))-set(cfg.DATA_CONFIG.day_list))
+
+    for day_n in train_day_list:
+        print('on day: ', day_n)
+        folder="val" if day_n not in cfg.DATA_CONFIG.day_list else "test"
+        print(folder)
+
+        for time_n in cfg.DATA_CONFIG.time_list:
+            print('on time: ', time_n)
+
+            for folder in ["train", "val"]:
+                test_X = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/X_d{day_n}_t{time_n}.npy')
+                Y_numpy = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/Y_d{day_n}_t{time_n}.npy')
+                weights = []
+                X_torch = torch.from_numpy(np.array(test_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
+                Y_torch = torch.from_numpy(Y_numpy)
+                if TCN_USED:
+                    X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
+                test_data = torch.utils.data.TensorDataset(X_torch, Y_torch)
+                test_loader = torch.utils.data.DataLoader(
+                    test_data, batch_size=2048, shuffle=False, drop_last=False, num_workers=4)
+                with torch.no_grad():
+                    for _, (inputs,targets) in enumerate(test_loader):
+                        inputs=inputs.to(DEVICE)
+                        targets=targets.detach().cpu()
+                        #print(targets.size())
+                        outputs = model(inputs).detach().cpu()
+                        # get results
+
+                        eng = utils.EngineTest(outputs, targets)
+                        predict = np.squeeze(eng.get_pred_labels())
+                        acti_fun = cfg.HP.evi_fun if EDL_USED else 'softmax'
+                        scores = eng.get_scores(acti_fun, EDL_USED)
+                        tmp_weights = scores['entropy']
+                        tmp_weights[predict!=targets]=1-tmp_weights[predict!=targets]
+
+                        weights.extend(tmp_weights)
+
+                        #if EDL_USED:
+                        #    un_vac_list.extend(scores['vacuity'])
+                        #    un_diss_list.extend(scores['dissonance'])
+
+                np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W_d{day_n}_t{time_n}.npy', np.array(weights, dtype=np.float32))
+
+    return
+
+
 def test_all(cfg):
     sb_n = cfg.DATA_CONFIG.sb_n
     print('Testing for sb: ', sb_n)
@@ -45,8 +111,6 @@ def test_all(cfg):
     #inputs_torch, targets_numpy
     #trial_list = list(range(1,cfg.DATA_CONFIG.trial_n+1))
 
-    sb_n_list = []
-    model_list = []
     day_n_list = []
     time_n_list = []
     predict_list = []
@@ -179,5 +243,5 @@ if __name__ == "__main__":
 
         #cfg.result_file = cfg.RESULT_PATH+'SampleWeightedTrainingResultsVal.csv'#'./SampleReversedWeightedTrainingResults.csv'
         cfg.result_file = cfg.RESULT_PATH+cfg.RESULTS.outputfile
-        test_all(cfg)
-
+        #test_all(cfg)
+        get_weights(cfg)

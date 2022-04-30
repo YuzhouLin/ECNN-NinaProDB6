@@ -57,11 +57,23 @@ def run_training(cfg):
         X_train_torch = torch.squeeze(X_train_torch, 1) # ([5101, 14, 400])
         X_val_torch = torch.squeeze(X_val_torch, 1)
 
-    #W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
-    #W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
+    # if W applied
+    train_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t2.npy')), axis=0)
+    val_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t2.npy')), axis=0)
+    if cfg.TRAINING.day_n==2:
+        day_n=2
+        train_W_extra = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t2.npy')), axis=0)
+        val_W_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t2.npy')), axis=0)
+        train_W = np.concatenate((train_W, train_W_extra), axis=0)
+        val_W = np.concatenate((val_W, val_W_extra), axis=0)
 
-    train_data = TensorDataset(X_train_torch, Y_train_torch)#, W_train_torch)
-    val_data = TensorDataset(X_val_torch, Y_val_torch)#, W_val_torch)
+    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
+    W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
+    #W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
+    #W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
+
+    train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
+    val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
     _, val_class_counts = np.unique(val_Y, return_counts=True)
