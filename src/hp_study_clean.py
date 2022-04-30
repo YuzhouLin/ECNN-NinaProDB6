@@ -31,15 +31,24 @@ def run_training(cfg):
     sb_n = cfg.DATA_CONFIG.sb_n
     n_class = len(cfg.CLASS_NAMES)
 
-    train_X = np.load(cfg.DATA_PATH+f's{sb_n}/train/X.npy')
-    train_Y = np.load(cfg.DATA_PATH+f's{sb_n}/train/Y.npy')
-    val_X = np.load(cfg.DATA_PATH+f's{sb_n}/val/X.npy')
-    val_Y = np.load(cfg.DATA_PATH+f's{sb_n}/val/Y.npy')
-    train_W = np.load(cfg.DATA_PATH+f's{sb_n}/train/W.npy')
-    val_W = np.load(cfg.DATA_PATH+f's{sb_n}/val/W.npy')
+    day_n=1
+    train_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t2.npy')), axis=0)
+    val_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t2.npy')), axis=0)
+    train_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t2.npy')), axis=0)
+    val_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t2.npy')), axis=0)
+    if cfg.TRAINING.day_n==2:
+        day_n=2
+        train_X_extra = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t2.npy')), axis=0)
+        val_X_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t2.npy')), axis=0)
+        train_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t2.npy')), axis=0)
+        val_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t2.npy')), axis=0)
 
-    train_W = 18 - train_W
-    val_W = 18 - val_W
+        train_X = np.concatenate((train_X, train_X_extra), axis=0)
+        val_X = np.concatenate((val_X, val_X_extra), axis=0)
+        train_Y = np.concatenate((train_Y, train_Y_extra), axis=0)
+        val_Y = np.concatenate((val_Y, val_Y_extra), axis=0)
+
+    print(np.shape(train_X))
     X_train_torch = torch.from_numpy(np.array(train_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_train_torch = torch.from_numpy(np.array(train_Y, dtype=np.int64))
     X_val_torch = torch.from_numpy(np.array(val_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
@@ -48,11 +57,11 @@ def run_training(cfg):
         X_train_torch = torch.squeeze(X_train_torch, 1) # ([5101, 14, 400])
         X_val_torch = torch.squeeze(X_val_torch, 1)
 
-    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
-    W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
+    #W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
+    #W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
 
-    train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
-    val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
+    train_data = TensorDataset(X_train_torch, Y_train_torch)#, W_train_torch)
+    val_data = TensorDataset(X_val_torch, Y_val_torch)#, W_val_torch)
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
     _, val_class_counts = np.unique(val_Y, return_counts=True)
@@ -112,7 +121,6 @@ def run_training(cfg):
         train_loss = train_losses['train']
         valid_loss = train_losses['val']
         scheduler.step(valid_loss)
-
 
         print(
             f"epoch:{epoch}, "
@@ -234,11 +242,12 @@ def cv_hyperparam_study(sb_n):
         direction=cfg.HPO_STUDY.direction,  # maximaze or minimaze our objective
         sampler=sampler,  # parametrs sampling strategy
         pruner=eval(cfg.HPO_STUDY.pruner),
-        study_name=study_dir+f'_sb{sb_n}',
+        study_name=study_dir+f'_sb{sb_n}_baseline{cfg.TRAINING.day_n}',
         storage=f"sqlite:///study/{study_dir}/sb{sb_n}.db",
         load_if_exists=True
     )
     study.optimize(lambda trial: objective(trial, cfg), n_trials=cfg.HPO_STUDY.trial_n)
+
 
     print("Number of finished trials: ", len(study.trials))
     print("Best trial:")
@@ -253,16 +262,17 @@ def cv_hyperparam_study(sb_n):
     with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'w') as f:
         yaml.dump(study_results, f)
 
-        for key, value in trial.params.items():
-            print("    {}: {}".format(key, value))
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))
     return
 
 
 if __name__ == "__main__":
 
-    for sb_n in [5, 6, 7, 8, 10]:
+    for sb_n in [1,3,4,5,6,7,8,10]:
         global GLOBAL_BEST_LOSS
         GLOBAL_BEST_LOSS = np.inf
         cv_hyperparam_study(sb_n)
 
-    #os.system('shutdown')
+    os.system('shutdown')
+

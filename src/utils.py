@@ -32,7 +32,8 @@ class EngineTrain:
     @staticmethod
     def criterion(outputs, targets, loss_params):  # loss function
         if loss_params['edl_used'] == 0:
-            loss_fun = nn.CrossEntropyLoss(reduction='none')
+            #loss_fun = nn.CrossEntropyLoss(reduction='none')
+            loss_fun = nn.CrossEntropyLoss()
             loss = loss_fun(outputs, targets)
         else:
             loss = pro.edl_mse_loss(outputs, targets, loss_params)
@@ -50,18 +51,17 @@ class EngineTrain:
             self.model.train() if train_flag else self.model.eval()
             final_loss[phase] = 0.0
             data_n = 0.0
-            #for _, (inputs, targets) in enumerate(data_loaders[phase]):
-            for _, (inputs, targets, weights) in enumerate(data_loaders[phase]):
+            for _, (inputs, targets) in enumerate(data_loaders[phase]):
+            #for _, (inputs, targets, weights) in enumerate(data_loaders[phase]):
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)  # (batch_size,)
-                weights = weights.to(self.device)
+                #weights = weights.to(self.device)
                 self.optimizer.zero_grad(set_to_none=True)
                 with torch.set_grad_enabled(train_flag):
                     outputs = self.model(inputs)  # (batch_size,class_n)
-                    loss_all = self.criterion(outputs, targets, loss_params)
-                    #loss_func = nn.CrossEntropyLoss(reduction='none')
-                    #loss_all = loss_func(outputs, targets)
-                    loss = (weights*loss_all).sum()/weights.sum()
+                    #loss_all = self.criterion(outputs, targets, loss_params)
+                    #loss = (weights*loss_all).sum()/weights.sum()
+                    loss= self.criterion(outputs, targets, loss_params)
                     preds = outputs.argmax(dim=1).detach().cpu().numpy()
                     trues = targets.detach().cpu().numpy()
                     if train_flag:

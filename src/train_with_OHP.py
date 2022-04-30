@@ -32,28 +32,37 @@ def run_training(cfg):
     sb_n = cfg.DATA_CONFIG.sb_n
     n_class = len(cfg.CLASS_NAMES)
 
-    train_X = np.load(cfg.DATA_PATH+f's{sb_n}/train/X.npy')
-    train_Y = np.load(cfg.DATA_PATH+f's{sb_n}/train/Y.npy')
-    val_X = np.load(cfg.DATA_PATH+f's{sb_n}/val/X.npy')
-    val_Y = np.load(cfg.DATA_PATH+f's{sb_n}/val/Y.npy')
-    train_W = np.load(cfg.DATA_PATH+f's{sb_n}/train/W.npy')
-    val_W = np.load(cfg.DATA_PATH+f's{sb_n}/val/W.npy')
+    day_n=1
+    train_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t2.npy')), axis=0)
+    val_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t2.npy')), axis=0)
+    train_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t2.npy')), axis=0)
+    val_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t2.npy')), axis=0)
+    if cfg.TRAINING.day_n==2:
+        day_n=2
+        train_X_extra = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d{day_n}_t2.npy')), axis=0)
+        val_X_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d{day_n}_t2.npy')), axis=0)
+        train_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t2.npy')), axis=0)
+        val_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t2.npy')), axis=0)
 
-    train_W = 18 - train_W
-    val_W = 18 - val_W
+        train_X = np.concatenate((train_X, train_X_extra)), axis=0)
+        val_X = np.concatenate((val_X, val_X_extra)), axis=0)
+        train_Y = np.concatenate((train_Y, train_Y_extra)), axis=0)
+        val_Y = np.concatenate((val_Y, val_Y_extra)), axis=0)
+
     X_train_torch = torch.from_numpy(np.array(train_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_train_torch = torch.from_numpy(np.array(train_Y, dtype=np.int64))
     X_val_torch = torch.from_numpy(np.array(val_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_val_torch = torch.from_numpy(np.array(val_Y, dtype=np.int64))
+
+
+
     if TCN_USED:
         X_train_torch = torch.squeeze(X_train_torch, 1) # ([5101, 14, 400])
         X_val_torch = torch.squeeze(X_val_torch, 1)
 
-    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
-    W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
 
-    train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
-    val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
+    train_data = TensorDataset(X_train_torch, Y_train_torch)
+    val_data = TensorDataset(X_val_torch, Y_val_torch)
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
     _, val_class_counts = np.unique(val_Y, return_counts=True)
@@ -155,38 +164,6 @@ def run_training(cfg):
     return
 
 
-def objective(trial, cfg):
-    # cfg.HP={} # hyperparams
-    # Update the params for tuning with cross validation
-    #with open("hpo_search.yaml", 'r') as f:
-    #    hyo_search = yaml.load(f, Loader=yaml.SafeLoader)
-    #trial.set_user_attr("batch_size", 256)
-    #if TCN_USED:
-    #    trial.set_user_attr("kernel_size", 5)
-    for key, item in cfg.HP_SEARCH[f'EDL{EDL_USED}'].items():
-        cfg.HP[key] =  eval(item) # Example of an item: trial.suggest_int("kernel_size", 2, 6)
-    cfg.HP['batch_size'] = cfg.HP['batch_base']*2**cfg.HP['batch_factor']
-    if TCN_USED:
-        cfg.HP['layer_n'] = eval(cfg.HP_SEARCH['TCN'].layer_n)
-        cfg.HP['kernel_size'] = cfg.HP_SEARCH['TCN'].kernel_list[cfg.HP['layer_n']-3]
-        #for key, item in cfg.HP_SEARCH['TCN'].items():
-        #    if key == 'tcn_channels':
-        #        cfg.HP[key] = item
-        #    else:
-        #        cfg.HP[key] =  eval(item)
-
-        #tcn_channels = [int(cfg.HP['init_channel'])]
-        #for i in range(cfg.HP['tcn_layer_n']-1):
-        #    tcn_channels.append(tcn_channels[-1]*2)
-        #cfg.HP['TCN_CHANNELS'] = [32, 64, 128, 256, 512]
-    #print(cfg.HP)
-    #cfg.HP['batch_size'] = 256
-    #if TCN_USED:
-    #    cfg.HP['kernel_size'] = 5
-    best_loss = run_training(cfg)
-    return best_loss
-
-
 def prepared_cfg(sb_n):
 
     # Load config file
@@ -234,7 +211,7 @@ def prepared_cfg(sb_n):
 
 if __name__ == "__main__":
 
-    for sb_n in [3, 4]:
+    for sb_n in [1,3,4]:
         cfg = prepared_cfg(sb_n)
         run_training(cfg)
     #os.system('shutdown')
