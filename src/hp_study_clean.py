@@ -58,6 +58,7 @@ def run_training(cfg):
         X_val_torch = torch.squeeze(X_val_torch, 1)
 
     # if W applied
+    '''
     train_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t2.npy')), axis=0)
     val_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t2.npy')), axis=0)
     if cfg.TRAINING.day_n==2:
@@ -69,8 +70,9 @@ def run_training(cfg):
 
     W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
     W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
-    #W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
-    #W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
+    '''
+    W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
+    W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
 
     train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
     val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
@@ -281,10 +283,10 @@ def cv_hyperparam_study(sb_n):
 
 if __name__ == "__main__":
 
-    for sb_n in [1,3,4,5,6,7,8,10]:
+    for sb_n in [10]:#[1,3,4,5,6,7,8,10]:
         global GLOBAL_BEST_LOSS
         GLOBAL_BEST_LOSS = np.inf
         cv_hyperparam_study(sb_n)
 
-    os.system('shutdown')
+    #os.system('shutdown')
 

@@ -44,10 +44,10 @@ def run_training(cfg):
         train_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d{day_n}_t2.npy')), axis=0)
         val_Y_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d{day_n}_t2.npy')), axis=0)
 
-        train_X = np.concatenate((train_X, train_X_extra)), axis=0)
-        val_X = np.concatenate((val_X, val_X_extra)), axis=0)
-        train_Y = np.concatenate((train_Y, train_Y_extra)), axis=0)
-        val_Y = np.concatenate((val_Y, val_Y_extra)), axis=0)
+        train_X = np.concatenate((train_X, train_X_extra), axis=0)
+        val_X = np.concatenate((val_X, val_X_extra), axis=0)
+        train_Y = np.concatenate((train_Y, train_Y_extra), axis=0)
+        val_Y = np.concatenate((val_Y, val_Y_extra), axis=0)
 
     X_train_torch = torch.from_numpy(np.array(train_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_train_torch = torch.from_numpy(np.array(train_Y, dtype=np.int64))
@@ -60,9 +60,26 @@ def run_training(cfg):
         X_train_torch = torch.squeeze(X_train_torch, 1) # ([5101, 14, 400])
         X_val_torch = torch.squeeze(X_val_torch, 1)
 
+    # if W applied
+    day_n=1
+    train_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t2.npy')), axis=0)
+    val_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t2.npy')), axis=0)
+    if cfg.TRAINING.day_n==2:
+        day_n=2
+        train_W_extra = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d{day_n}_t2.npy')), axis=0)
+        val_W_extra  = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d{day_n}_t2.npy')), axis=0)
+        train_W = np.concatenate((train_W, train_W_extra), axis=0)
+        val_W = np.concatenate((val_W, val_W_extra), axis=0)
 
-    train_data = TensorDataset(X_train_torch, Y_train_torch)
-    val_data = TensorDataset(X_val_torch, Y_val_torch)
+    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
+    W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
+    #W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
+    #W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
+
+
+    train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
+    val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
+
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
     _, val_class_counts = np.unique(val_Y, return_counts=True)
@@ -155,7 +172,7 @@ def run_training(cfg):
                 'valid_loss': valid_loss,
                 'train_acc:': train_acc,
                 'valid_acc': val_acc
-                }, cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{sb_n}.pt')
+                }, cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}_sb{sb_n}.pt')
         else:
             early_stopping_counter += 1
         if early_stopping_counter > early_stopping_iter:
@@ -211,7 +228,7 @@ def prepared_cfg(sb_n):
 
 if __name__ == "__main__":
 
-    for sb_n in [1,3,4]:
+    for sb_n in [6,7,8,10]:
         cfg = prepared_cfg(sb_n)
         run_training(cfg)
-    #os.system('shutdown')
+    os.system('shutdown')
