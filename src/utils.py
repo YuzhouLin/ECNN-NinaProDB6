@@ -92,41 +92,41 @@ class EngineTrain:
             #final_acc[phase] = np.sum(results[phase])*1.0/len(results[phase])
         return final_loss, results_pred, results_true #final_acc
 
-    def re_train(self, data_loader, loss_params):
+    def retrain(self, data_loaders, loss_params):
         final_loss = 0.0
-        self.model.train()
-        data_n = 0.0
+        #final_acc = {}
+        #results = {'train': [], 'val': []}
         results_pred = []
         results_true = []
-        #for _, (inputs, targets) in enumerate(data_loader):
-        #    inputs = inputs.to(self.device)
-        #    targets = targets.to(self.device)
-        for _, (inputs, targets, weights) in enumerate(data_loader):
-            inputs = inputs.to(self.device)
-            targets = targets.to(self.device)  # (batch_size,)
-            weights = weights.to(self.device)
+
+        self.model.train()
+        weights_n=0.0
+        #data_n = 0.0
+
+        for _, batch_data in enumerate(data_loaders):
+            inputs = batch_data[0].to(self.device)
+            targets = batch_data[1].to(self.device)
+            weights=batch_data[2].to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
             with torch.set_grad_enabled(True):
-                outputs = self.model(inputs)
-                #loss = self.criterion(outputs, targets, loss_params)
+                outputs = self.model(inputs)  # (batch_size,class_n)
                 loss_all = self.criterion(outputs, targets, loss_params)
-                loss = (weights*loss_all).sum()/weights.sum()
-                loss.backward()
+                loss_total = (weights*loss_all).sum()
+                weights_total = weights.sum()
+                loss = loss_total/weights_total
+
                 preds = outputs.argmax(dim=1).detach().cpu().numpy()
                 trues = targets.detach().cpu().numpy()
 
+                loss.backward()
                 self.optimizer.step()
-                #loop.set_description(f"Epoch [{loss_params['epoch_num']}/{1000}]")
-                #loop.set_postfix(loss=loss.item())
-            results_pred.extend(preds)
-            results_true.extend(trues)
-
-            final_loss += float(loss.item()) * inputs.size(0)
-            data_n += inputs.size(0)
-        final_loss = final_loss / data_n
-        return final_loss, results_pred, results_true
-
+                results_pred.extend(preds)
+                results_true.extend(trues)
+                final_loss += loss_total.item()
+                weights_n += weights_total.item()
+        final_loss = final_loss / weights_n
+        return final_loss, results_pred, results_true #final_acc
 
 class EngineTest:
     def __init__(self, outputs, targets):
