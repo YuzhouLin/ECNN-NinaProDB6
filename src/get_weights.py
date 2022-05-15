@@ -1,4 +1,5 @@
 import argparse
+from sklearn.metrics import label_ranking_loss
 import torch
 import utils
 import helps_pre as pre
@@ -46,52 +47,61 @@ def get_weights(cfg):
 
     train_day_list = list(set(range(1,6))-set(cfg.DATA_CONFIG.day_list))
 
+    folder="train"
+    weights = []
+    labels = []
     for day_n in train_day_list:
         print('on day: ', day_n)
 
         for time_n in cfg.DATA_CONFIG.time_list:
             print('on time: ', time_n)
 
-            for folder in ["train", "val"]:
-                test_X = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/X_d{day_n}_t{time_n}.npy')
-                Y_numpy = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/Y_d{day_n}_t{time_n}.npy')
-                weights = []
-                X_torch = torch.from_numpy(np.array(test_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
-                Y_torch = torch.from_numpy(Y_numpy)
-                if TCN_USED:
-                    X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
-                test_data = torch.utils.data.TensorDataset(X_torch, Y_torch)
-                test_loader = torch.utils.data.DataLoader(
-                    test_data, batch_size=2048, shuffle=False, drop_last=False, num_workers=4)
-                with torch.no_grad():
-                    for _, (inputs,targets) in enumerate(test_loader):
-                        inputs=inputs.to(DEVICE)
-                        targets=targets.detach().cpu()
-                        #print(targets.size())
-                        outputs = model(inputs).detach().cpu()
-                        # get results
+            #for folder in ["train", "val"]:
+            test_X = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/X_d{day_n}_t{time_n}.npy')
+            Y_numpy = np.load(cfg.DATA_PATH+f's{sb_n}/{folder}/Y_d{day_n}_t{time_n}.npy')
+            labels.extend(Y_numpy)
+            X_torch = torch.from_numpy(np.array(test_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
+            Y_torch = torch.from_numpy(Y_numpy)
+            if TCN_USED:
+                X_torch = torch.squeeze(X_torch, 1) # ([5101, 14, 400])
+            test_data = torch.utils.data.TensorDataset(X_torch, Y_torch)
+            test_loader = torch.utils.data.DataLoader(
+                test_data, batch_size=2048, shuffle=False, drop_last=False, num_workers=4)
+            with torch.no_grad():
+                for _, (inputs,targets) in enumerate(test_loader):
+                    inputs=inputs.to(DEVICE)
+                    targets=targets.detach().cpu()
+                    #print(targets.size())
+                    outputs = model(inputs).detach().cpu()
+                    # get results
 
-                        eng = utils.EngineTest(outputs, targets)
-                        predict = np.squeeze(eng.get_pred_labels())
-                        acti_fun = cfg.HP.evi_fun if EDL_USED else 'softmax'
-                        scores = eng.get_scores(acti_fun, EDL_USED)
+                    eng = utils.EngineTest(outputs, targets)
+                    predict = np.squeeze(eng.get_pred_labels())
+                    acti_fun = cfg.HP.evi_fun if EDL_USED else 'softmax'
+                    scores = eng.get_scores(acti_fun, EDL_USED)
 
-                        #print(np.median(scores['entropy']))
-                        #print(np.median(scores['vacuity']))
-                        #print(np.median(scores['dissonance']))
-                        #exit()
 
-                        tmp_weights = scores[un]
-                        targets = targets.numpy()
-                        tmp_weights[predict!=targets]=1-tmp_weights[predict!=targets]
-                        #tmp_weights[predict==targets]=tmp_weights[predict==targets]**2
+                    tmp_weights =scores[un]
+                    targets = targets.numpy()
+                    tmp_weights[predict!=targets]=1-tmp_weights[predict!=targets]
+                    #tmp_weights[predict==targets]=tmp_weights[predict==targets]**2
 
-                        weights.extend(tmp_weights)
-                        #if EDL_USED:
-                        #    un_vac_list.extend(scores['vacuity'])
-                        #    un_diss_list.extend(scores['dissonance'])
-                np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W_d{day_n}_t{time_n}.npy', np.array(weights, dtype=np.float32))
+                    weights.extend(tmp_weights)
+                    #if EDL_USED:
+                    #    un_vac_list.extend(scores['vacuity'])
+                    #    un_diss_list.extend(scores['dissonance'])
 
+            #np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W_d{day_n}_t{time_n}.npy', np.array(weights, dtype=np.float32))
+
+    labels = np.array(labels)
+
+    class_i, class_counts = np.unique(labels, return_counts=True)
+
+    for i in class_i:
+        index=np.where(labels[labels==i])
+        weights[index] = weights[index]*np.sum(weights[index])/class_counts[i]
+
+    np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W.npy', np.array(weights, dtype=np.float32))
     return
 
 def get_weights_edl(cfg):

@@ -4,9 +4,6 @@ import torch
 import numpy as np
 import utils
 import helps_pre as pre
-import optuna
-from optuna.samplers import TPESampler
-from optuna.pruners import MedianPruner
 import yaml
 from easydict import EasyDict as edict
 from torch.utils.data import TensorDataset, WeightedRandomSampler
@@ -197,7 +194,7 @@ def run_training(cfg):
     #print(cfg.HP.lr)
     #cfg.HP.lr*=5
     #print(cfg.HP.lr)
-    cfg.HP.lr*=0.1
+    #cfg.HP.lr*=0.1
     if cfg.TRAINING.day_n==1:
         train_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/X_d1_t2.npy')), axis=0)
         val_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d1_t2.npy')), axis=0)
@@ -210,8 +207,7 @@ def run_training(cfg):
         val_X = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d1_t2.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d2_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/X_d2_t2.npy')), axis=0)
         train_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d1_t2.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d2_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/Y_d2_t2.npy')), axis=0)
         val_Y = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d1_t2.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d2_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/Y_d2_t2.npy')), axis=0)
-        train_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d1_t2.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d2_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/train/W_d2_t2.npy')), axis=0)
-        val_W = np.concatenate((np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d1_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d1_t2.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d2_t1.npy'),np.load(cfg.DATA_PATH+f's{sb_n}/val/W_d2_t2.npy')), axis=0)
+
 
     X_train_torch = torch.from_numpy(np.array(train_X, dtype=np.float32)).permute(0, 1, 3, 2) # ([5101, 1, 14, 400])
     Y_train_torch = torch.from_numpy(np.array(train_Y, dtype=np.int64))
@@ -228,12 +224,15 @@ def run_training(cfg):
     #W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
     #W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
 
-    W_train_torch = torch.from_numpy(np.array(1*(train_W),dtype=np.float32))
-    W_val_torch = torch.from_numpy(np.array(1*(val_W),dtype=np.float32))
+    train_W = np.load(cfg.DATA_PATH+f's{sb_n}/train/W.npy')
+    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
+
+    #W_train_torch = torch.from_numpy(np.array(1*(train_W),dtype=np.float32))
+    #W_val_torch = torch.from_numpy(np.array(1*(val_W),dtype=np.float32))
 
 
     #W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
-    #W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
+    W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
 
 
     train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
@@ -504,7 +503,7 @@ if __name__ == "__main__":
 
     for sb_n in [10]:
         cfg = prepared_cfg(sb_n)
-        #run_training(cfg)
-        cfg.HP.lr*=0.1
-        run_retraining(cfg)
+        run_training(cfg)
+        #cfg.HP.lr*=0.1
+        #run_retraining(cfg)
     #os.system('shutdown')
