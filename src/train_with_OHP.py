@@ -230,14 +230,16 @@ def run_training(cfg):
     #W_train_torch = torch.from_numpy(np.array(100**train_W,dtype=np.float32))
     #W_val_torch = torch.from_numpy(np.array(1*(val_W),dtype=np.float32))
 
-
+    '''
     W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
     W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
-
+    
 
     train_data = TensorDataset(X_train_torch, Y_train_torch, W_train_torch)
     val_data = TensorDataset(X_val_torch, Y_val_torch, W_val_torch)
-
+    '''
+    train_data = TensorDataset(X_train_torch, Y_train_torch)
+    val_data = TensorDataset(X_val_torch, Y_val_torch)
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
     #_, val_class_counts = np.unique(val_Y, return_counts=True)

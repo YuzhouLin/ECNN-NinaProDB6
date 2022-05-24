@@ -50,14 +50,14 @@ class EngineTrain:
             train_flag = phase == 'train'
             self.model.train() if train_flag else self.model.eval()
             final_loss[phase] = 0.0
-            weights_n=0.0
-            #data_n = 0.0
+            #weights_n=0.0
+            data_n = 0.0
             #for _, (inputs, targets) in enumerate(data_loaders[phase]):
             for _, batch_data in enumerate(data_loaders[phase]):
                 inputs = batch_data[0].to(self.device)
                 targets = batch_data[1].to(self.device)
                 #if len(batch_data)==3:
-                weights=batch_data[2].to(self.device)
+                #weights=batch_data[2].to(self.device)
                 #else:
                 #    weights=torch.ones(len(inputs),dtype=torch.float32,device=self.device)
             #for _, (inputs, targets, weights) in enumerate(data_loaders[phase]):
@@ -68,10 +68,13 @@ class EngineTrain:
                 with torch.set_grad_enabled(train_flag):
                     outputs = self.model(inputs)  # (batch_size,class_n)
                     loss_all = self.criterion(outputs, targets, loss_params)
+                    '''
                     #if len(batch_data)==3:
                     loss_total = (weights*loss_all).sum()
                     weights_total = weights.sum()
                     loss = loss_total/weights_total
+                    '''
+                    loss=loss_all.sum()/len(loss_all)
                     #else:
                     #    loss=loss_all.sum()/len(loss_all) # torch_all: ([128])
                     #loss= self.criterion(outputs, targets, loss_params)
@@ -83,12 +86,12 @@ class EngineTrain:
                 results_pred[phase].extend(preds)
                 results_true[phase].extend(trues)
                 #results[phase].extend(preds == trues)
-                #final_loss[phase] += loss.item() * inputs.size(0)
-                #data_n += inputs.size(0)
-                final_loss[phase] += loss_total.item()
-                weights_n += weights_total.item()
-            final_loss[phase] = final_loss[phase] / weights_n
-            #final_loss[phase] = final_loss[phase] / data_n
+                final_loss[phase] += loss.item() * inputs.size(0)
+                data_n += inputs.size(0)
+                #final_loss[phase] += loss_total.item()
+                #weights_n += weights_total.item()
+            #final_loss[phase] = final_loss[phase] / weights_n
+            final_loss[phase] = final_loss[phase] / data_n
             #final_acc[phase] = np.sum(results[phase])*1.0/len(results[phase])
         return final_loss, results_pred, results_true #final_acc
 
