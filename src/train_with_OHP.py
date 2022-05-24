@@ -224,14 +224,14 @@ def run_training(cfg):
     #W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
     #W_val_torch = torch.from_numpy(np.array(val_W,dtype=np.float32))
 
-    train_W = np.load(cfg.DATA_PATH+f's{sb_n}/train/W.npy')
-    W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
+    #train_W = np.load(cfg.DATA_PATH+f's{sb_n}/train/W.npy')
+    #W_train_torch = torch.from_numpy(np.array(train_W,dtype=np.float32))
 
-    #W_train_torch = torch.from_numpy(np.array(1*(train_W),dtype=np.float32))
+    #W_train_torch = torch.from_numpy(np.array(100**train_W,dtype=np.float32))
     #W_val_torch = torch.from_numpy(np.array(1*(val_W),dtype=np.float32))
 
 
-    #W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
+    W_train_torch = torch.ones(len(Y_train_torch),dtype=torch.float32)
     W_val_torch = torch.ones(len(Y_val_torch),dtype=torch.float32)
 
 
@@ -240,27 +240,33 @@ def run_training(cfg):
 
 
     _, train_class_counts = np.unique(train_Y, return_counts=True)
-    _, val_class_counts = np.unique(val_Y, return_counts=True)
+    #_, val_class_counts = np.unique(val_Y, return_counts=True)
 
     print(train_class_counts)
-    print(val_class_counts)
+    #print(val_class_counts)
     n_train = train_class_counts.sum()
-    n_val = val_class_counts.sum()
+    #n_val = val_class_counts.sum()
+
     class_weights_train = [float(n_train)/train_class_counts[i] for i in range(n_class)]
-    class_weights_val = [float(n_val)/val_class_counts[i] for i in range(n_class)]
+    #class_weights_val = [float(n_val)/val_class_counts[i] for i in range(n_class)]
 
     weights_train = train_Y
     weights_val = val_Y
     for i in range(n_class):
         weights_train[train_Y==i] = class_weights_train[i]
-        weights_val[val_Y==i] = class_weights_val[i]
+        #weights_val[val_Y==i] = class_weights_val[i]
+
     sampler_train = WeightedRandomSampler(weights_train, int(n_train),replacement=True)
-    sampler_val = WeightedRandomSampler(weights_val, int(n_val),replacement=True)
+    #sampler_val = WeightedRandomSampler(weights_val, int(n_val),replacement=True)
     # load_data
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size=cfg.HP.batch_size, sampler=sampler_train, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
+    '''
     val_loader = torch.utils.data.DataLoader(
         val_data, batch_size=cfg.HP.batch_size, sampler=sampler_val, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
+    '''
+    val_loader = torch.utils.data.DataLoader(
+        val_data, batch_size=cfg.HP.batch_size, shuffle=True, drop_last=cfg.DATA_LOADER.drop_last, num_workers=cfg.DATA_LOADER.num_workers, pin_memory=cfg.DATA_LOADER.pin_memory)
 
     trainloaders = {
         "train": train_loader,
@@ -274,6 +280,7 @@ def run_training(cfg):
         model = utils.TCN(input_size=cfg.DATA_CONFIG.channel_n, output_size=n_class, num_channels=cfg.HP.layer_n*[cfg.DATA_CONFIG.channel_n], kernel_size=cfg.HP.kernel_size, dropout=cfg.HP.dropout_rate)
     else:
         model = utils.Model(number_of_class=n_class, dropout=cfg.HP.dropout_rate)
+
 
     if not cfg.TRAINING.retrained_from_scratch:
         print('train from best_hpo')
@@ -298,7 +305,7 @@ def run_training(cfg):
     early_stopping_iter = cfg.TRAINING.early_stopping_iter
 
     torch.backends.cudnn.benchmark = True
-    for epoch in range(1, cfg.TRAINING.epochs + 1):
+    for epoch in range(1, cfg.TRAINING.retrained_epochs + 1):
         # if 'annealing_step' in loss_params:
         if EDL_USED == 2:
             loss_params['epoch_num'] = epoch
@@ -327,7 +334,7 @@ def run_training(cfg):
             for g_i in g_i_train:
                 train_acc.append(np.sum(tmp_pred_train[tmp_true_train==g_i]==g_i)/g_n_train[g_i])
                 val_acc.append(np.sum(tmp_pred_val[tmp_true_val==g_i]==g_i)/g_n_val[g_i])
-            best_acc = hmean(val_acc)
+            #best_acc = hmean(val_acc)
             print('-'*20)
             print('training acc for each class: ', np.round(train_acc, decimals=2))
             print('val acc for each class: ', np.round(val_acc, decimals=2))
@@ -339,7 +346,7 @@ def run_training(cfg):
                 'valid_loss': valid_loss,
                 'train_acc:': train_acc,
                 'valid_acc': val_acc
-                }, cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}_sb{sb_n}.pt')
+                }, cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}{cfg.retrained_run}_sb{sb_n}.pt')
         else:
             early_stopping_counter += 1
         if early_stopping_counter > early_stopping_iter:
@@ -501,9 +508,11 @@ def prepared_cfg(sb_n):
 if __name__ == "__main__":
 
 
-    for sb_n in [10]:
+    for sb_n in [1,3,4,5,6,7,8,10]:
         cfg = prepared_cfg(sb_n)
-        run_training(cfg)
+        for i in range(1,11):
+            cfg.retrained_run = i
+            run_training(cfg)
         #cfg.HP.lr*=0.1
         #run_retraining(cfg)
     #os.system('shutdown')

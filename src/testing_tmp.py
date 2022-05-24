@@ -88,7 +88,7 @@ def get_weights(cfg):
     return
 
 
-def test_all(cfg):
+def test_tmp(cfg):
     sb_n = cfg.DATA_CONFIG.sb_n
     print('Testing for sb: ', sb_n)
     # Load trained model
@@ -227,18 +227,7 @@ def test_all(cfg):
     }
 
     df_new = pd.DataFrame(test_dict)
-
-
-
-    if os.path.exists(cfg.result_file):
-        df = pd.read_csv(cfg.result_file, dtype={"sb": np.int8, "model":np.string_, "day": np.int8, "time": np.int8, "predict": np.int8, "actual": np.int8, "state": np.string_, "un_nentropy": np.float16, "un_nnmp": np.float16, "un_vac": np.float16, "un_diss": np.float16, "un_overall": np.float16})
-        df = pd.concat([df, df_new], ignore_index=True)
-    else:
-        df = df_new
-
-    df.to_csv(cfg.result_file, float_format=np.float16, index=False)
-
-    #df_new.to_csv(cfg.result_file, float_format=np.float16, index=False)
+    df_new.to_csv(cfg.result_file, float_format=np.float16, index=False)
     return
 
 
@@ -320,58 +309,34 @@ if __name__ == "__main__":
     print(cfg.model_name)
     study_path = os.getcwd() + cfg.STUDY_PATH + study_dir
 
-    '''
-    for sb_n in [1,3,4,5,6,7,8,10]:
-    #for sb_n in [6,7,8,10]:
-        cfg.DATA_CONFIG.sb_n = sb_n
 
-        with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
-            hp = yaml.load(f, Loader=yaml.SafeLoader)
+    cfg.DATA_CONFIG.sb_n = 10
 
-        cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
-        cfg.best_loss = hp[0]['best_loss']
-        #cfg.HP = {}
-        for key, item in hp[1].items():
-            cfg.HP[key] = item
+    with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
+        hp = yaml.load(f, Loader=yaml.SafeLoader)
 
-        if TCN_USED:
-            cfg.HP['kernel_size'] = cfg.HP_SEARCH.TCN.kernel_list[cfg.HP.layer_n-3]
+    cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
+    cfg.best_loss = hp[0]['best_loss']
+    #cfg.HP = {}
+    for key, item in hp[1].items():
+        cfg.HP[key] = item
 
-        if not os.path.exists(cfg.RESULT_PATH):
-            os.makedirs(cfg.RESULT_PATH)
+    if TCN_USED:
+        cfg.HP['kernel_size'] = cfg.HP_SEARCH.TCN.kernel_list[cfg.HP.layer_n-3]
 
-        cfg.index = 'window'
+    if not os.path.exists(cfg.RESULT_PATH):
+        os.makedirs(cfg.RESULT_PATH)
 
-        #cfg.result_path = cfg.result_path + f'/sb{cfg.DATA_CONFIG.sb_n}'
+    cfg.index = 'window'
 
-        if retrained:
-            cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}{cfg.TRAINING.retrained_run}_sb{cfg.DATA_CONFIG.sb_n}.pt'
-            #cfg.test_model = cfg.model_path+f'/{cfg.RETRAINING.model_name}{cfg.RETRAINING.epochs}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test from the retrained model with the model initialisation using the best model saved during HPO
-        else:
-            cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
+    #cfg.result_path = cfg.result_path + f'/sb{cfg.DATA_CONFIG.sb_n}'
 
-        #cfg.result_file = cfg.RESULT_PATH+'SampleWeightedTrainingResultsVal.csv'#'./SampleReversedWeightedTrainingResults.csv'
-        cfg.result_file = cfg.RESULT_PATH+cfg.RESULTS.outputfile+'_'+cfg.TRAINING.retrained_run
-        test_all(cfg)
+    if retrained:
+        cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}{cfg.TRAINING.retrained_run}_sb{cfg.DATA_CONFIG.sb_n}.pt'
+        #cfg.test_model = cfg.model_path+f'/{cfg.RETRAINING.model_name}{cfg.RETRAINING.epochs}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test from the retrained model with the model initialisation using the best model saved during HPO
+    else:
+        cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
 
-        #quick_test(cfg)
-    '''
-    for sb_n in [1,3,4,5,6,7,8,10]:
-        cfg.DATA_CONFIG.sb_n = sb_n
-        with open(f'{study_path}/sb_{cfg.DATA_CONFIG.sb_n}', 'r') as f:
-            hp = yaml.load(f, Loader=yaml.SafeLoader)
 
-        cfg.model_path = os.getcwd() + cfg.MODEL_PATH + study_dir
-        for key, item in hp[1].items():
-            cfg.HP[key] = item
-        if TCN_USED:
-            cfg.HP['kernel_size'] = cfg.HP_SEARCH.TCN.kernel_list[cfg.HP.layer_n-3]
-        if not os.path.exists(cfg.RESULT_PATH):
-            os.makedirs(cfg.RESULT_PATH)
-        cfg.index = 'window'
-
-        for i in range(1,11):
-            cfg.TRAINING.retrained_run = i
-            cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.retrained_model_name}{cfg.TRAINING.retrained_run}_sb{cfg.DATA_CONFIG.sb_n}.pt'
-            cfg.result_file = cfg.RESULT_PATH+cfg.RESULTS.outputfile+'_'+cfg.TRAINING.retrained_run
-            test_all(cfg)
+    cfg.result_file = cfg.RESULT_PATH+'tmp.csv'
+    test_tmp(cfg)

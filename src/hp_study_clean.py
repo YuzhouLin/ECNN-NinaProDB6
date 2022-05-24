@@ -142,7 +142,7 @@ def run_training(cfg):
             for g_i in g_i_train:
                 train_acc.append(np.sum(tmp_pred_train[tmp_true_train==g_i]==g_i)/g_n_train[g_i])
                 val_acc.append(np.sum(tmp_pred_val[tmp_true_val==g_i]==g_i)/g_n_val[g_i])
-            best_acc = hmean(val_acc)
+            #best_acc = hmean(val_acc)
 
             '''
             torch.save({

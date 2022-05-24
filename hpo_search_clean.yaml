@@ -1,0 +1,140 @@
+DATA_PATH:
+  /../../hy-nas/Data6/
+
+DATA_READ:
+  /../../hy-nas/Data6/
+MODEL_PATH:
+  #/../../hy-tmp/models_test/
+  /../../hy-nas/models_distill2B/
+  #/../../hy-tmp/models_base2/
+STUDY_PATH:
+  #/../../hy-nas/study_test/
+  /../../hy-nas/study_distill2B/
+
+RESULT_PATH:
+  #/../../hy-nas/results_snr2A/ #base2/
+  /../../hy-nas/results_distill2B/
+  #/results1/
+  # /../../hy-tmp/study/
+
+RESULTS:
+  outputfile:
+    #Baseline2.csv
+    Distilled2B.csv
+    #entropy_retrained.csv
+    #ecnn2_sb8_B.csv
+    #tmp.csv
+    #Baseline2_ecnn2.csv
+  data_type:
+    sb: np.int8
+    model: np.string_
+    predict: np.int8
+    actual: np.int8
+    state: np.string_
+    un_nentropy: np.float16
+    un_nnmp: np.float16
+    un_vac: np.float16
+    un_diss: np.float16
+    un_overall: np.float16
+
+CLASS_NAMES:
+  ['Rest', 'Large diameter grasp', 'Adducted Thumb grasp', 'Index finger extension grasp', 'Medium wrap', 'Writing tripod grasp', 'Power sphere grasp', 'Precision sphere grasp']
+
+CLASS_LIST:
+  [0, 1, 3, 4, 6, 9, 10, 11]
+
+DATA_CONFIG:
+  sb_n: 10
+  day_list: [3,4,5] # testing days
+  time_list: [1, 2]
+  trial_n: 12
+  channel_n: 14 # number of sEMG channels
+
+
+DATA_LOADER:
+  shuffle: True
+  drop_last: True
+  num_workers: 4
+  pin_memory: True
+
+TRAINING:
+  epochs: 200
+  early_stopping_iter: 10
+  day_n: 2 # the number of days used for training
+  model_name: best_hpo
+  retrained_epochs: 200
+  retrained_run: 1
+  retrained_model_name: retrained
+  retrained_from_scratch: True
+
+HPO_STUDY:
+  sampler:
+    TPESampler() # eval()
+  direction:
+    minimize
+    #maximize
+  pruner:
+    MedianPruner(n_startup_trials=5, n_warmup_steps=1, interval_steps=1) # eval()
+  trial_n:
+    5
+
+HP:
+  optimizer:
+    Adam
+  batch_base:
+    32
+  scheduler_eps:
+    0.0000001
+  weight_decay:
+    0.0004
+  lr_factor:
+    0.8
+  dropout_rate:
+    0.45
+
+HP_SEARCH:
+  EDL0: &edl_base0
+    # optimizer:
+    #  trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+    lr:
+      trial.suggest_loguniform("lr", 1e-5, 5e-3)
+    batch_factor:
+      trial.suggest_int("batch_factor", 0, 5)
+    #weight_decay:
+    #  trial.suggest_loguniform("weight_decay", 1e-4, 1e-1)
+    #lr_reduced_factor:
+    #  trial.suggest_float("lr_reduced_factor", 0.2, 0.95)
+    #dropout_rate:
+    #  trial.suggest_float("dropout_rate", 0.1, 0.5)
+
+  TCN: &tcn_base
+    #kernel_size:
+    #  trial.suggest_int("kernel_size", 2, 5)
+      #trial.set_user_attr("kernel_size", 5)
+    layer_n:
+      trial.suggest_int("layer_n", 3, 3)
+    kernel_list:
+      [51, 26, 13, 8, 4, 2]
+
+    #tcn_channels:
+    #  [32, 64, 128, 256, 512]
+    #tcn_layer_n:
+    #  trial.suggest_int("tcn_layer_n", 3, 6)
+    #init_channel:
+      #trial.suggest_int("init_channel_n", 8, )
+    #  trial.suggest_discrete_uniform("init_channel_n", 2, 64, 2)
+
+  EDL1: &edl_base1
+    <<: *edl_base0
+    evi_fun:
+      trial.suggest_categorical("evi_fun", ["relu", "softplus", "exp"])
+  EDL2: &edl_base2
+    <<: *edl_base1
+    annealing_step:
+      trial.suggest_int("annealing_step", 10, 60, step=5)
+  EDL3: &edl_base3
+    <<: *edl_base1
+    l:
+      trial.suggest_float("l", 0.01, 1.0, log=True)
+
+

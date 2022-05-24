@@ -9,6 +9,7 @@ import os
 import yaml
 from easydict import EasyDict as edict
 import scipy.io as io
+from sklearn import preprocessing
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -81,9 +82,9 @@ def get_weights(cfg):
                     scores = eng.get_scores(acti_fun, EDL_USED)
 
 
-                    tmp_weights =scores[un]
-                    targets = targets.numpy()
-                    tmp_weights[predict!=targets]=1-tmp_weights[predict!=targets]
+                    tmp_weights = 1-scores[un]
+                    #targets = targets.numpy()
+                    #tmp_weights[predict!=targets]=1-tmp_weights[predict!=targets]
                     #tmp_weights[predict==targets]=tmp_weights[predict==targets]**2
 
                     weights.extend(tmp_weights)
@@ -93,14 +94,21 @@ def get_weights(cfg):
 
             #np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W_d{day_n}_t{time_n}.npy', np.array(weights, dtype=np.float32))
 
+    '''
     labels = np.array(labels)
-
+    weights = np.array(weights)
     class_i, class_counts = np.unique(labels, return_counts=True)
 
     for i in class_i:
-        index=np.where(labels[labels==i])
-        weights[index] = weights[index]*np.sum(weights[index])/class_counts[i]
+        index=np.where(labels==i)
+        print(i)
+        #scale = np.sum(weights[index])/class_counts[i]
+        #print(scale)
+        #weights[index] = (weights[index] - np.min(weights[index]))/(np.max(weights[index])-np.min(weights[index]))
 
+        weights[index] = preprocessing.scale(weights[index])
+        #weights[index]*scale
+    '''
     np.save(cfg.DATA_PATH+f's{sb_n}/{folder}/W.npy', np.array(weights, dtype=np.float32))
     return
 
@@ -274,6 +282,6 @@ if __name__ == "__main__":
         cfg.test_model = cfg.model_path+f'/{cfg.TRAINING.model_name}_sb{cfg.DATA_CONFIG.sb_n}.pt' # test directly from the best model saved during HPO
 
 
-        #get_weights(cfg)
-        get_weights_edl(cfg)
+        get_weights(cfg)
+        #get_weights_edl(cfg)
         #get_weights_snr(cfg)
